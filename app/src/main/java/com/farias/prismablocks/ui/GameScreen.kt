@@ -178,6 +178,7 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
                 }
             } else {
                 // Portrait: shrink the fixed parts on short phones, cap the board on tablets.
+                val screenWidth = maxWidth
                 val dims = if (maxHeight < 660.dp) GameDims.compact else GameDims.normal
                 val fixed = dims.topBar + dims.header + dims.gap + dims.powerBar + bannerH + 12.dp
                 val boardSide = minOf(maxWidth - 24.dp, (maxHeight - fixed) / (1f + dims.trayRatio)).coerceIn(150.dp, 720.dp)
@@ -194,7 +195,7 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
                     Spacer(Modifier.height(dims.gap))
                     Tray(vm, boardSide, dims.trayRatio)
                     // Narrow phones show icons + price only.
-                    PowerBar(vm, maxWidth - 16.dp, dims, vertical = false, showLabels = maxWidth >= 392.dp, onUse = onPower)
+                    PowerBar(vm, screenWidth - 16.dp, dims, vertical = false, showLabels = screenWidth >= 392.dp, onUse = onPower)
                     Spacer(Modifier.weight(1f))
                     BannerAd(ads)
                 }
