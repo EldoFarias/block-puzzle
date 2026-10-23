@@ -105,6 +105,7 @@ fun AdventureScreen(onBack: () -> Unit, onPlay: (Int) -> Unit) {
 
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val viewport = maxHeight
+                val mapWidth = maxWidth
                 // Scroll so the current level sits in the middle of the screen.
                 LaunchedEffect(current) {
                     // Wait for the first layout so the scroll range is known.
@@ -122,7 +123,7 @@ fun AdventureScreen(onBack: () -> Unit, onPlay: (Int) -> Unit) {
                     Column {
                         Spacer(Modifier.height(ROW_HEIGHT / 2))
                         for (n in shown downTo 1) {
-                            LevelNode(n, current, maxWidth) { intro = Adventure.level(n) }
+                            LevelNode(n, current, mapWidth) { intro = Adventure.level(n) }
                         }
                         Spacer(Modifier.height(ROW_HEIGHT / 2))
                     }
