@@ -1,9 +1,17 @@
 package com.farias.prismablocks.ui
 
 import android.Manifest
+import android.app.Activity
 import android.os.Build
+import android.os.SystemClock
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -45,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,9 +76,13 @@ import com.farias.prismablocks.audio.SoundManager
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameViewModel
 import com.farias.prismablocks.notify.DailyReminder
+import kotlinx.coroutines.delay
 import kotlin.math.sin
 
 const val VIDEO_COINS = 40
+
+/** Time to press back a second time to leave the game from the menu. */
+private const val EXIT_WINDOW_MS = 2000L
 
 @Composable
 fun HomeScreen(
@@ -128,6 +141,30 @@ fun HomeScreen(
             chestAutoShownDay = Progress.today()
             showChest = true
         }
+    }
+
+    // Back closes an open dialog; on the menu itself it must be pressed twice to leave the game.
+    var backPressedAt by remember { mutableLongStateOf(0L) }
+    var showExitHint by remember { mutableStateOf(false) }
+    BackHandler {
+        when {
+            showSettings || showHowTo || showMissions || showChest -> {
+                showSettings = false
+                showHowTo = false
+                showMissions = false
+                showChest = false
+            }
+            SystemClock.uptimeMillis() - backPressedAt < EXIT_WINDOW_MS -> (context as? Activity)?.finish()
+            else -> {
+                backPressedAt = SystemClock.uptimeMillis()
+                showExitHint = true
+            }
+        }
+    }
+    LaunchedEffect(backPressedAt) {
+        if (backPressedAt == 0L) return@LaunchedEffect
+        delay(EXIT_WINDOW_MS)
+        showExitHint = false
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -253,6 +290,26 @@ fun HomeScreen(
         if (showHowTo) HowToDialog { showHowTo = false }
         if (showMissions) MissionsDialog(sound) { showMissions = false }
         if (showChest) ChestDialog(ads, sound) { showChest = false }
+
+        AnimatedVisibility(
+            visible = showExitHint,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .systemBarsPadding()
+                .padding(bottom = 96.dp, start = 24.dp, end = 24.dp),
+        ) {
+            Text(
+                stringResource(R.string.press_back_exit),
+                style = Styles.plain(15, Color.White, FontWeight.Bold),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xE6120B2E))
+                    .border(1.dp, Palette.GlassBorder, RoundedCornerShape(50))
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+        }
     }
 }
 

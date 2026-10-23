@@ -141,4 +141,5 @@
     <string name="trail_chest">Baú da trilha</string>
     <string name="star_chest">Baú de estrelas</string>
     <string name="star_chest_hint">Um baú a cada %1$d estrelas</string>
+    <string name="press_back_exit">Toque em voltar de novo para sair</string>
 </resources>

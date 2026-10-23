@@ -141,4 +141,5 @@
     <string name="trail_chest">रास्ते का संदूक</string>
     <string name="star_chest">सितारों का संदूक</string>
     <string name="star_chest_hint">हर %1$d सितारों पर एक संदूक</string>
+    <string name="press_back_exit">बाहर निकलने के लिए फिर से वापस दबाएँ</string>
 </resources>

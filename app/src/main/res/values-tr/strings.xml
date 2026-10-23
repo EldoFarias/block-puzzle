@@ -141,4 +141,5 @@
     <string name="trail_chest">Yol sandığı</string>
     <string name="star_chest">Yıldız sandığı</string>
     <string name="star_chest_hint">Her %1$d yıldızda bir sandık</string>
+    <string name="press_back_exit">Çıkmak için tekrar geri basın</string>
 </resources>

@@ -142,4 +142,5 @@
     <string name="trail_chest">Trail chest</string>
     <string name="star_chest">Star chest</string>
     <string name="star_chest_hint">A chest every %1$d stars</string>
+    <string name="press_back_exit">Press back again to exit</string>
 </resources>

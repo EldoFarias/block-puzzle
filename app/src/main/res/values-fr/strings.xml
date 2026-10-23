@@ -141,4 +141,5 @@
     <string name="trail_chest">Coffre du chemin</string>
     <string name="star_chest">Coffre d\'étoiles</string>
     <string name="star_chest_hint">Un coffre toutes les %1$d étoiles</string>
+    <string name="press_back_exit">Appuyez à nouveau sur retour pour quitter</string>
 </resources>

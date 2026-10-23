@@ -141,4 +141,5 @@
     <string name="trail_chest">Weg-Truhe</string>
     <string name="star_chest">Sternentruhe</string>
     <string name="star_chest_hint">Alle %1$d Sterne eine Truhe</string>
+    <string name="press_back_exit">Zum Beenden erneut zurück drücken</string>
 </resources>

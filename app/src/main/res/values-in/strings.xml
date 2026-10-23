@@ -141,4 +141,5 @@
     <string name="trail_chest">Peti jalur</string>
     <string name="star_chest">Peti bintang</string>
     <string name="star_chest_hint">Satu peti setiap %1$d bintang</string>
+    <string name="press_back_exit">Tekan kembali sekali lagi untuk keluar</string>
 </resources>
