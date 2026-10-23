@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -80,6 +81,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.sin
 
 const val VIDEO_COINS = 40
+
+const val PRIVACY_POLICY_URL = "https://eldofarias.github.io/prisma-blocks/privacy.html"
 
 /** Time to press back a second time to leave the game from the menu. */
 private const val EXIT_WINDOW_MS = 2000L
@@ -608,7 +611,15 @@ private fun SettingsDialog(ads: AdsManager, onToggleReminder: () -> Unit, onHowT
             }
             ToggleRow(stringResource(R.string.notifications), Progress.notificationsOn) { onToggleReminder() }
             if (ads.privacyOptionsRequired) PrivacyLink(ads)
-            Spacer(Modifier.height(4.dp))
+            val uri = LocalUriHandler.current
+            Text(
+                text = stringResource(R.string.privacy_policy),
+                style = Styles.plain(14, Palette.TextSecondary),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { uri.openUri(PRIVACY_POLICY_URL) }
+                    .padding(8.dp),
+            )
             SecondaryButton(stringResource(R.string.how_to)) { onHowTo() }
             PrimaryButton(stringResource(R.string.got_it)) { onClose() }
         }

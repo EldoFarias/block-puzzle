@@ -142,4 +142,5 @@
     <string name="star_chest">Cofre de estrellas</string>
     <string name="star_chest_hint">Un cofre cada %1$d estrellas</string>
     <string name="press_back_exit">Pulsa atrás otra vez para salir</string>
+    <string name="privacy_policy">Política de privacidad</string>
 </resources>
