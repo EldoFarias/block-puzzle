@@ -1,7 +1,6 @@
 package com.farias.prismablocks.game
 
 import android.app.Application
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.farias.prismablocks.R
 import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.audio.SoundManager
+import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.ui.Fx
 import com.farias.prismablocks.ui.Palette
 import kotlinx.coroutines.Job
@@ -21,6 +21,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 enum class Haptic { TICK, PLACE, CLEAR, HEAVY }
+
+enum class Mode { CLASSIC, DAILY }
+
+enum class Power(val cost: Int) { UNDO(30), BOMB(50), SHUFFLE(40) }
 
 /** Piece currently held by the player. [pointer] is in root coordinates. */
 data class DragState(
@@ -36,15 +40,20 @@ data class DragState(
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefs = app.getSharedPreferences("prisma_blocks", Context.MODE_PRIVATE)
+    init {
+        Progress.init(app)
+    }
+
     private val engine = GameEngine()
-    val sound = SoundManager(app)
+    val sound = SoundManager.get(app)
     val fx = Fx()
 
     /** Set by the UI so the view model can trigger vibration. */
     var haptic: (Haptic) -> Unit = {}
 
     // ------------------------------------------------------------- observable state
+    var mode by mutableStateOf(Mode.CLASSIC)
+        private set
     var board by mutableStateOf(IntArray(GameEngine.N * GameEngine.N))
         private set
     var tray by mutableStateOf(listOf<Piece?>(null, null, null))
@@ -53,9 +62,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var score by mutableIntStateOf(0)
         private set
-    var best by mutableIntStateOf(prefs.getInt(KEY_BEST, 0))
-        private set
     var combo by mutableIntStateOf(0)
+        private set
+    var lines by mutableIntStateOf(0)
         private set
     var gameOver by mutableStateOf(false)
         private set
@@ -66,16 +75,30 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var newRecord by mutableStateOf(false)
         private set
+    var canUndo by mutableStateOf(false)
+        private set
     var paused by mutableStateOf(false)
     var drag by mutableStateOf<DragState?>(null)
+        private set
+    var bombMode by mutableStateOf(false)
+    var coinsEarned by mutableIntStateOf(0)
         private set
     var gameOverAt = 0L
         private set
 
-    var soundOn by mutableStateOf(prefs.getBoolean(KEY_SOUND, true))
+    // Daily challenge
+    var dailyTarget by mutableIntStateOf(0)
         private set
-    var vibrationOn by mutableStateOf(prefs.getBoolean(KEY_VIBRATION, true))
+    var dailyWon by mutableStateOf(false)
         private set
+    var showDailyWin by mutableStateOf(false)
+        private set
+    var dailyStreak by mutableIntStateOf(0)
+        private set
+    private var dailyDay = 0
+
+    /** No more moves for this game (lost, or the daily goal was reached). */
+    val finished: Boolean get() = gameOver || dailyWon
 
     // ------------------------------------------------------------- geometry (root px), set by the UI
     var gridOrigin = Offset.Zero
@@ -83,21 +106,77 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     var liftPx = 0f
     val slotRects = arrayOf(Rect.Zero, Rect.Zero, Rect.Zero)
 
-    private var bestAtGameStart = best
-    private var gameOverJob: Job? = null
+    private var bestAtGameStart = Progress.best
+    private var coinsAwardedThisGame = 0
+    private var finishCounted = false
+    private var panelJob: Job? = null
+    /** False until a game is started from the menu, so nothing is saved for an untouched engine. */
+    private var active = false
 
-    init {
-        sound.enabled = soundOn
-        if (!engine.restore(prefs.getString(KEY_SAVE, null)) || engine.gameOver) {
+    // ------------------------------------------------------------- starting games
+
+    fun hasClassicSave(): Boolean = Progress.has(KEY_SAVE)
+
+    fun startClassic(continueSaved: Boolean) {
+        resetSession(Mode.CLASSIC)
+        if (!(continueSaved && engine.restore(Progress.loadString(KEY_SAVE)) && !engine.gameOver)) {
             engine.newGame()
+            Progress.remove(KEY_SAVE)
         }
         sync()
+    }
+
+    fun startDaily() {
+        resetSession(Mode.DAILY)
+        dailyDay = Progress.today()
+        dailyTarget = dailyTargetFor(dailyDay)
+        val saved = Progress.loadString(KEY_DAILY)
+        val restored = saved != null && saved.substringBefore("|") == dailyDay.toString() &&
+            engine.restore(saved.substringAfter("|")) && !engine.gameOver
+        if (!restored) newDailyGame()
+        sync()
+    }
+
+    /** "Play again" / "Try again": a fresh game in the current mode. */
+    fun restart() {
+        resetSession(mode)
+        if (mode == Mode.DAILY) {
+            newDailyGame()
+        } else {
+            engine.newGame()
+            Progress.remove(KEY_SAVE)
+        }
+        sync()
+        sound.play(Sfx.WHOOSH, 0.6f)
+    }
+
+    private fun newDailyGame() {
+        Progress.remove(KEY_DAILY)
+        engine.newGame(seed = dailyDay.toLong() * 7919L, prefill = 16 + dailyDay % 9)
+    }
+
+    private fun resetSession(newMode: Mode) {
+        active = true
+        panelJob?.cancel()
+        mode = newMode
+        showGameOverPanel = false
+        showDailyWin = false
+        dailyWon = false
+        newRecord = false
+        paused = false
+        bombMode = false
+        drag = null
+        coinsEarned = 0
+        coinsAwardedThisGame = 0
+        finishCounted = false
+        bestAtGameStart = Progress.best
+        fx.pops.fill(0L)
     }
 
     // ------------------------------------------------------------- drag & drop
 
     fun startDrag(slot: Int, pointer: Offset) {
-        if (gameOver || paused || drag != null) return
+        if (finished || paused || drag != null || bombMode) return
         val piece = engine.tray.getOrNull(slot) ?: return
         drag = computeTarget(DragState(slot, piece, pointer))
         sound.play(Sfx.PICK, 0.6f)
@@ -154,6 +233,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun onMove(r: MoveResult) {
         val ctx = getApplication<Application>()
         val color = Palette.block(r.color)
+        if (!Progress.tutorialDone) Progress.setTutorialDone(true)
 
         for (cell in r.placed) fx.pop(cell.r * GameEngine.N + cell.c)
 
@@ -184,10 +264,16 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             vibrate(Haptic.PLACE)
         }
 
-        if (!newRecord && bestAtGameStart > 0 && engine.score > bestAtGameStart) {
+        if (mode == Mode.CLASSIC && !newRecord && bestAtGameStart > 0 && engine.score > bestAtGameStart) {
             newRecord = true
             fx.text(ctx.getString(R.string.new_record), Offset(gridOrigin.x + cellPx * 4f, gridOrigin.y + cellPx * 2f), Palette.Gold, big = true, delayMs = 400)
             sound.play(Sfx.RECORD, 0.9f)
+        }
+
+        if (mode == Mode.DAILY && !dailyWon && engine.linesCleared >= dailyTarget) {
+            sync()
+            onDailyWon()
+            return
         }
         sync()
         if (r.gameOver) onGameOver()
@@ -197,15 +283,50 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         gameOverAt = fx.now
         sound.play(Sfx.GAME_OVER, 0.9f)
         vibrate(Haptic.HEAVY)
-        prefs.edit().remove(KEY_SAVE).apply()
-        gameOverJob?.cancel()
-        gameOverJob = viewModelScope.launch {
+        Progress.remove(if (mode == Mode.DAILY) KEY_DAILY else KEY_SAVE)
+        if (mode == Mode.CLASSIC) {
+            val total = engine.score / COIN_DIVISOR
+            val add = (total - coinsAwardedThisGame).coerceAtLeast(0)
+            coinsAwardedThisGame += add
+            coinsEarned = coinsAwardedThisGame
+            Progress.addCoins(add)
+        }
+        countFinish()
+        panelJob?.cancel()
+        panelJob = viewModelScope.launch {
             delay(900)
             showGameOverPanel = true
         }
     }
 
-    // ------------------------------------------------------------- actions
+    private fun onDailyWon() {
+        dailyWon = true
+        bombMode = false
+        dailyStreak = Progress.completeDaily()
+        val reward = DAILY_REWARD + 10 * (dailyStreak - 1).coerceIn(0, 5)
+        coinsEarned = reward
+        Progress.addCoins(reward)
+        Progress.remove(KEY_DAILY)
+        countFinish()
+        val ctx = getApplication<Application>()
+        fx.text(ctx.getString(R.string.daily_win), Offset(gridOrigin.x + cellPx * 4f, gridOrigin.y + cellPx * 3f), Palette.Gold, big = true, delayMs = 200)
+        fx.shake(cellPx * 0.2f)
+        sound.play(Sfx.RECORD)
+        vibrate(Haptic.HEAVY)
+        panelJob?.cancel()
+        panelJob = viewModelScope.launch {
+            delay(1300)
+            showDailyWin = true
+        }
+    }
+
+    private fun countFinish() {
+        if (finishCounted) return
+        finishCounted = true
+        Progress.onGameFinished()
+    }
+
+    // ------------------------------------------------------------- revive and power-ups
 
     val canRevive: Boolean get() = gameOver && !revived
 
@@ -223,38 +344,76 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (r.gameOver) onGameOver()
     }
 
-    fun restart() {
-        gameOverJob?.cancel()
-        engine.newGame()
-        showGameOverPanel = false
-        newRecord = false
-        paused = false
-        drag = null
-        bestAtGameStart = best
+    fun powerAvailable(p: Power): Boolean {
+        if (finished || paused) return false
+        return when (p) {
+            Power.UNDO -> canUndo
+            Power.BOMB -> board.any { it != 0 }
+            Power.SHUFFLE -> true
+        }
+    }
+
+    fun undo() {
+        if (!engine.undo()) return
+        sound.play(Sfx.WHOOSH, 0.8f, 0.9f)
+        vibrate(Haptic.PLACE)
         fx.pops.fill(0L)
-        prefs.edit().remove(KEY_SAVE).apply()
         sync()
-        // Animate the fresh tray in.
-        sound.play(Sfx.REVIVE, 0.5f, 1.2f)
     }
 
-    fun toggleSound() {
-        soundOn = !soundOn
-        sound.enabled = soundOn
-        prefs.edit().putBoolean(KEY_SOUND, soundOn).apply()
+    fun shuffle() {
+        engine.shuffleTray()
+        sound.play(Sfx.WHOOSH, 0.8f, 1.15f)
+        vibrate(Haptic.PLACE)
+        sync()
+        if (engine.gameOver) onGameOver()
     }
 
-    fun toggleVibration() {
-        vibrationOn = !vibrationOn
-        prefs.edit().putBoolean(KEY_VIBRATION, vibrationOn).apply()
-        if (vibrationOn) haptic(Haptic.PLACE)
+    /** Board cell under a tap in root coordinates, or null if outside the grid. */
+    fun cellAt(root: Offset): Pair<Int, Int>? {
+        val c = ((root.x - gridOrigin.x) / cellPx).toInt()
+        val r = ((root.y - gridOrigin.y) / cellPx).toInt()
+        if (root.x < gridOrigin.x || root.y < gridOrigin.y) return null
+        if (r !in 0 until GameEngine.N || c !in 0 until GameEngine.N) return null
+        return r to c
     }
+
+    /** True if a bomb at (r, c) would destroy at least one block. */
+    fun bombHits(r: Int, c: Int): Boolean {
+        for (rr in r - 1..r + 1) for (cc in c - 1..c + 1) {
+            if (rr in 0 until GameEngine.N && cc in 0 until GameEngine.N && board[rr * GameEngine.N + cc] != 0) return true
+        }
+        return false
+    }
+
+    fun bomb(r: Int, c: Int) {
+        val res = engine.bomb(r, c) ?: return
+        bombMode = false
+        for ((cell, col) in res.clearedCells) {
+            val color = Palette.block(col)
+            fx.flash(cell.r * GameEngine.N + cell.c, color)
+            fx.burst(cellCenter(cell.r, cell.c), color, cellPx, 10)
+        }
+        fx.shake(cellPx * 0.3f)
+        sound.play(Sfx.BOMB)
+        vibrate(Haptic.HEAVY)
+        sync()
+        if (res.gameOver) onGameOver()
+    }
+
+    fun playInvalid() {
+        sound.play(Sfx.INVALID, 0.5f)
+    }
+
+    // ------------------------------------------------------------- persistence
 
     fun save() {
-        if (!engine.gameOver) prefs.edit().putString(KEY_SAVE, engine.serialize()).apply()
+        if (!active || finished) return
+        when (mode) {
+            Mode.CLASSIC -> Progress.saveString(KEY_SAVE, engine.serialize())
+            Mode.DAILY -> Progress.saveString(KEY_DAILY, "$dailyDay|${engine.serialize()}")
+        }
     }
-
-    // ------------------------------------------------------------- helpers
 
     private fun sync() {
         board = engine.board.copyOf()
@@ -262,17 +421,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         trayFits = engine.tray.map { it == null || engine.fitsAnywhere(it.shape) }
         score = engine.score
         combo = engine.combo
+        lines = engine.linesCleared
         gameOver = engine.gameOver
         revived = engine.revived
-        if (engine.score > best) {
-            best = engine.score
-            prefs.edit().putInt(KEY_BEST, best).apply()
-        }
+        canUndo = engine.canUndo
+        if (mode == Mode.CLASSIC) Progress.submitScore(engine.score)
         save()
     }
 
+    // ------------------------------------------------------------- helpers
+
     private fun vibrate(kind: Haptic) {
-        if (vibrationOn) haptic(kind)
+        if (Progress.vibrationOn) haptic(kind)
     }
 
     private fun cellCenter(r: Int, c: Int) =
@@ -285,15 +445,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         return Offset(gridOrigin.x + (c + 0.5f) * cellPx, gridOrigin.y + (r + 0.5f) * cellPx)
     }
 
-    override fun onCleared() {
-        sound.release()
-        super.onCleared()
-    }
-
     companion object {
-        private const val KEY_SAVE = "save"
-        private const val KEY_BEST = "best"
-        private const val KEY_SOUND = "sound"
-        private const val KEY_VIBRATION = "vibration"
+        const val KEY_SAVE = "save"
+        const val KEY_DAILY = "daily_save"
+        const val COIN_DIVISOR = 40
+        const val DAILY_REWARD = 60
+
+        /** Lines to clear in the daily challenge of [day] (yyyyMMdd): 10 to 14. */
+        fun dailyTargetFor(day: Int): Int = 10 + day % 5
     }
 }

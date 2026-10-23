@@ -15,8 +15,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -31,21 +35,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -57,38 +65,54 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.farias.prismablocks.R
 import com.farias.prismablocks.ads.AdsManager
+import com.farias.prismablocks.audio.Sfx
+import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameEngine
 import com.farias.prismablocks.game.GameViewModel
+import com.farias.prismablocks.game.Mode
+import com.farias.prismablocks.game.Power
 import kotlinx.coroutines.CancellationException
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
+
+/** A power-up waiting for payment by video (the player didn't have enough coins). */
+private class PendingPay(val power: Power, val action: () -> Unit)
 
 @Composable
-fun GameScreen(vm: GameViewModel, ads: AdsManager) {
+fun GameScreen(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
     val view = LocalView.current
     val density = LocalDensity.current
+    var pendingPay by remember { mutableStateOf<PendingPay?>(null) }
 
     LaunchedEffect(view) { vm.haptic = { kind -> performHaptic(view, kind) } }
     LaunchedEffect(density) { vm.liftPx = with(density) { 64.dp.toPx() } }
     LaunchedEffect(Unit) {
         while (true) withFrameNanos { vm.fx.step(it) }
     }
-    BackHandler(enabled = !vm.paused && !vm.showGameOverPanel) { vm.paused = true }
+    BackHandler(enabled = vm.bombMode) { vm.bombMode = false }
+    BackHandler(enabled = !vm.bombMode && !vm.paused && !vm.showGameOverPanel && !vm.showDailyWin) { vm.paused = true }
+
+    fun pay(p: Power, action: () -> Unit) {
+        if (Progress.spend(p.cost)) {
+            action()
+        } else {
+            vm.playInvalid()
+            pendingPay = PendingPay(p, action)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         AuroraBackground()
 
         BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
-            // Fixed parts: top bar 52, score 96, gap 18, banner ~64, margins 20.
-            val boardSide = minOf(maxWidth - 28.dp, (maxHeight - 250.dp) / 1.34f).coerceAtLeast(200.dp)
+            // Fixed parts: top bar 52, score 100, gap 14, power bar 70, banner ~64, margins 20.
+            val boardSide = minOf(maxWidth - 28.dp, (maxHeight - 330.dp) / 1.34f).coerceAtLeast(200.dp)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -98,9 +122,19 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager) {
                 TopBar(vm)
                 ScoreHeader(vm)
                 Spacer(Modifier.weight(1f))
-                Board(vm, boardSide)
-                Spacer(Modifier.height(18.dp))
+                Board(vm, boardSide) { r, c ->
+                    if (!vm.bombHits(r, c)) vm.playInvalid()
+                    else pay(Power.BOMB) { vm.bomb(r, c) }
+                }
+                Spacer(Modifier.height(14.dp))
                 Tray(vm, boardSide)
+                PowerBar(vm, boardSide) { p ->
+                    when (p) {
+                        Power.UNDO -> pay(p) { vm.undo() }
+                        Power.SHUFFLE -> pay(p) { vm.shuffle() }
+                        Power.BOMB -> vm.bombMode = !vm.bombMode
+                    }
+                }
                 Spacer(Modifier.weight(1f))
                 BannerAd(ads)
             }
@@ -108,50 +142,41 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager) {
 
         DragAndParticlesLayer(vm)
         FloatingTexts(vm)
+        TutorialLayer(vm)
 
         AnimatedVisibility(
             visible = vm.paused,
             enter = fadeIn(tween(180)),
             exit = fadeOut(tween(150)),
-        ) { PauseOverlay(vm, ads) }
+        ) { PauseOverlay(vm, ads, onHome) }
 
         AnimatedVisibility(
             visible = vm.showGameOverPanel,
             enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.9f, animationSpec = tween(300)),
             exit = fadeOut(tween(150)),
-        ) { GameOverOverlay(vm, ads) }
+        ) { GameOverOverlay(vm, ads, onHome) }
+
+        AnimatedVisibility(
+            visible = vm.showDailyWin,
+            enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = 0.6f)),
+            exit = fadeOut(tween(150)),
+        ) { DailyWinOverlay(vm, onHome) }
+
+        pendingPay?.let { pending ->
+            PayWithVideoDialog(
+                power = pending.power,
+                ads = ads,
+                onWatch = {
+                    pendingPay = null
+                    ads.showRewarded {
+                        vm.sound.play(Sfx.COIN)
+                        pending.action()
+                    }
+                },
+                onCancel = { pendingPay = null },
+            )
+        }
     }
-}
-
-// --------------------------------------------------------------------------- background
-
-@Composable
-private fun AuroraBackground() {
-    val transition = rememberInfiniteTransition(label = "aurora")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Restart),
-        label = "phase",
-    )
-    Canvas(Modifier.fillMaxSize()) {
-        drawRect(Brush.verticalGradient(listOf(Palette.BgTop, Palette.BgBottom)))
-        val a = phase * 2f * PI.toFloat()
-        val w = size.width
-        val h = size.height
-        blob(Palette.AuroraViolet, Offset(w * (0.25f + 0.18f * cos(a)), h * (0.18f + 0.07f * sin(a))), w * 0.85f, 0.32f)
-        blob(Palette.AuroraCyan, Offset(w * (0.85f + 0.12f * sin(a)), h * (0.55f + 0.09f * cos(a))), w * 0.70f, 0.16f)
-        blob(Palette.AuroraPink, Offset(w * (0.20f + 0.14f * sin(a + 1.3f)), h * (0.92f + 0.05f * cos(a + 2f))), w * 0.80f, 0.22f)
-    }
-}
-
-private fun DrawScope.blob(color: Color, center: Offset, radius: Float, alpha: Float) {
-    if (radius < 1f) return
-    drawCircle(
-        brush = Brush.radialGradient(listOf(color.copy(alpha = alpha), Color.Transparent), center, radius),
-        radius = radius,
-        center = center,
-    )
 }
 
 // --------------------------------------------------------------------------- header
@@ -165,10 +190,16 @@ private fun TopBar(vm: GameViewModel) {
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CrownIcon(Modifier.size(24.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(vm.best.toString(), style = Styles.glow(20, Palette.Gold))
+        if (vm.mode == Mode.CLASSIC) {
+            CrownIcon(Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(Progress.best.toString(), style = Styles.glow(20, Palette.Gold))
+        } else {
+            Text(stringResource(R.string.daily_title), style = Styles.glow(18, Palette.Cyan, FontWeight.Black))
+        }
         Spacer(Modifier.weight(1f))
+        CoinPill(Progress.coins)
+        Spacer(Modifier.width(10.dp))
         GlassCircleButton(onClick = { vm.paused = true }) {
             PauseIcon(Modifier.size(16.dp))
         }
@@ -181,26 +212,58 @@ private fun ScoreHeader(vm: GameViewModel) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(96.dp),
+            .height(100.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(shown.toString(), style = Styles.gradient(56))
-        val combo = vm.combo
-        Box(Modifier.height(24.dp), contentAlignment = Alignment.Center) {
-            if (combo >= 2) {
-                Text(stringResource(R.string.combo_x, combo), style = Styles.glow(16, Palette.Gold, FontWeight.Black))
+        Text(shown.toString(), style = Styles.gradient(52))
+        Box(Modifier.height(30.dp), contentAlignment = Alignment.Center) {
+            if (vm.mode == Mode.DAILY) {
+                DailyProgress(vm.lines, vm.dailyTarget)
+            } else if (vm.combo >= 2) {
+                Text(stringResource(R.string.combo_x, vm.combo), style = Styles.glow(16, Palette.Gold, FontWeight.Black))
             }
         }
+    }
+}
+
+@Composable
+private fun DailyProgress(lines: Int, target: Int) {
+    val progress = (lines.toFloat() / target.coerceAtLeast(1)).coerceIn(0f, 1f)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .width(150.dp)
+                .height(10.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color(0x33FFFFFF)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .clip(RoundedCornerShape(50))
+                    .background(Brush.horizontalGradient(listOf(Palette.Cyan, Palette.Magenta))),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stringResource(R.string.lines_progress, lines.coerceAtMost(target), target),
+            style = Styles.plain(14, Palette.TextPrimary, FontWeight.Bold),
+        )
     }
 }
 
 // --------------------------------------------------------------------------- board
 
 @Composable
-private fun Board(vm: GameViewModel, side: Dp) {
+private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
     val density = LocalDensity.current
     val padDp = side * 0.03f
+    val pulse = rememberInfiniteTransition(label = "bomb")
+    val bombPulse by pulse.animateFloat(
+        0.35f, 1f, infiniteRepeatable(tween(600, easing = LinearEasing), RepeatMode.Reverse), label = "bp",
+    )
     Canvas(
         modifier = Modifier
             .size(side)
@@ -209,6 +272,18 @@ private fun Board(vm: GameViewModel, side: Dp) {
                 val p = with(density) { padDp.toPx() }
                 vm.gridOrigin = Offset(b.left + p, b.top + p)
                 vm.cellPx = (b.width - 2f * p) / GameEngine.N
+            }
+            .pointerInput(vm.bombMode) {
+                if (!vm.bombMode) return@pointerInput
+                detectTapGestures { local ->
+                    val p = padDp.toPx()
+                    val cell = (size.width - 2f * p) / GameEngine.N
+                    val c = ((local.x - p) / cell).toInt()
+                    val r = ((local.y - p) / cell).toInt()
+                    if (local.x >= p && local.y >= p && r in 0 until GameEngine.N && c in 0 until GameEngine.N) {
+                        onBombTap(r, c)
+                    }
+                }
             },
     ) {
         vm.fx.frame.longValue // redraw every frame for animations
@@ -218,7 +293,11 @@ private fun Board(vm: GameViewModel, side: Dp) {
         val corner = CornerRadius(p * 2.4f)
 
         drawRoundRect(Palette.Glass, cornerRadius = corner)
-        drawRoundRect(Palette.GlassBorder, cornerRadius = corner, style = Stroke(1.dp.toPx()))
+        if (vm.bombMode) {
+            drawRoundRect(Palette.Danger.copy(alpha = bombPulse), cornerRadius = corner, style = Stroke(3.dp.toPx()))
+        } else {
+            drawRoundRect(Palette.GlassBorder, cornerRadius = corner, style = Stroke(1.dp.toPx()))
+        }
 
         val board = vm.board
         val drag = vm.drag?.takeIf { it.valid }
@@ -344,6 +423,58 @@ private fun TraySlot(vm: GameViewModel, slot: Int, modifier: Modifier) {
     }
 }
 
+// --------------------------------------------------------------------------- power-ups
+
+@Composable
+private fun PowerBar(vm: GameViewModel, width: Dp, onUse: (Power) -> Unit) {
+    Row(
+        modifier = Modifier
+            .width(width)
+            .height(70.dp)
+            .padding(top = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+    ) {
+        PowerButton(vm, Power.UNDO, stringResource(R.string.power_undo), onUse) { UndoIcon(it) }
+        PowerButton(vm, Power.BOMB, stringResource(R.string.power_bomb), onUse) { BombIcon(it) }
+        PowerButton(vm, Power.SHUFFLE, stringResource(R.string.power_shuffle), onUse) { ShuffleIcon(it) }
+    }
+}
+
+@Composable
+private fun PowerButton(
+    vm: GameViewModel,
+    power: Power,
+    label: String,
+    onUse: (Power) -> Unit,
+    icon: @Composable (Modifier) -> Unit,
+) {
+    val active = power == Power.BOMB && vm.bombMode
+    val enabled = active || vm.powerAvailable(power)
+    val shape = RoundedCornerShape(18.dp)
+    Row(
+        modifier = Modifier
+            .height(56.dp)
+            .alpha(if (enabled) 1f else 0.4f)
+            .clip(shape)
+            .background(if (active) Palette.Danger.copy(alpha = 0.25f) else Palette.Glass)
+            .border(if (active) 2.dp else 1.dp, if (active) Palette.Danger else Palette.GlassBorder, shape)
+            .clickable(enabled = enabled) { onUse(power) }
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon(Modifier.size(26.dp))
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CoinIcon(Modifier.size(12.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(power.cost.toString(), style = Styles.plain(12, Palette.Gold, FontWeight.Bold))
+            }
+        }
+    }
+}
+
 // --------------------------------------------------------------------------- overlay layers
 
 @Composable
@@ -352,7 +483,8 @@ private fun DragAndParticlesLayer(vm: GameViewModel) {
         vm.fx.frame.longValue
         for (pt in vm.fx.particles) {
             val a = (pt.life / pt.maxLife).coerceIn(0f, 1f)
-            drawCircle(pt.color.copy(alpha = a), pt.size * (0.5f + 0.5f * a), Offset(pt.x, pt.y))
+            val r = pt.size * (0.5f + 0.5f * a)
+            if (r > 0.1f) drawCircle(pt.color.copy(alpha = a), r, Offset(pt.x, pt.y))
         }
         val d = vm.drag ?: return@Canvas
         val cell = vm.cellPx
@@ -366,6 +498,77 @@ private fun DragAndParticlesLayer(vm: GameViewModel) {
             )
         }
         drawShape(d.piece.shape, tl, cell, Palette.block(d.piece.color), alpha = if (d.valid) 1f else 0.85f)
+    }
+}
+
+/** First game: an animated finger shows how to drag a piece. Bomb mode: a hint pill. */
+@Composable
+private fun TutorialLayer(vm: GameViewModel) {
+    val showTutorial = !Progress.tutorialDone && vm.mode == Mode.CLASSIC && vm.drag == null &&
+        !vm.finished && !vm.paused && !vm.bombMode
+    val hint = when {
+        vm.bombMode -> stringResource(R.string.bomb_hint)
+        showTutorial -> stringResource(R.string.tutorial_drag) + "\n" + stringResource(R.string.tutorial_lines)
+        else -> null
+    }
+    if (hint != null) {
+        HintPill(hint, vm)
+    }
+    if (!showTutorial) return
+    val slot = vm.tray.indexOfFirst { it != null }
+    if (slot < 0) return
+    val piece = vm.tray[slot] ?: return
+
+    val transition = rememberInfiniteTransition(label = "tutorial")
+    val t by transition.animateFloat(
+        0f, 1f, infiniteRepeatable(tween(2000, easing = LinearEasing), RepeatMode.Restart), label = "t",
+    )
+    Canvas(Modifier.fillMaxSize()) {
+        val from = vm.slotRects[slot].center
+        if (from == Offset.Zero || vm.cellPx <= 1f) return@Canvas
+        val to = Offset(vm.gridOrigin.x + vm.cellPx * 4f, vm.gridOrigin.y + vm.cellPx * 5f)
+        // 0-0.15 press, 0.15-0.75 move, 0.75-1 fade out
+        val move = ((t - 0.15f) / 0.6f).coerceIn(0f, 1f)
+        val eased = move * move * (3f - 2f * move)
+        val pos = Offset(from.x + (to.x - from.x) * eased, from.y + (to.y - from.y) * eased)
+        val alpha = if (t > 0.75f) (1f - (t - 0.75f) / 0.25f) else (t / 0.1f).coerceAtMost(1f)
+        val cell = vm.cellPx
+        val w = piece.shape.cols * cell
+        val h = piece.shape.rows * cell
+        drawShape(
+            piece.shape, Offset(pos.x - w / 2f, pos.y - vm.liftPx - h), cell,
+            Palette.block(piece.color), alpha = 0.55f * alpha, glow = false,
+        )
+        val fingerR = 16.dp.toPx()
+        val press = if (t < 0.15f) t / 0.15f else 1f
+        drawCircle(Color.White.copy(alpha = 0.25f * alpha), fingerR * (1.2f + 0.6f * (1f - press)), pos)
+        drawCircle(Color.White.copy(alpha = 0.9f * alpha), fingerR * 0.7f, pos)
+    }
+}
+
+@Composable
+private fun HintPill(text: String, vm: GameViewModel) {
+    Box(
+        Modifier.layout { measurable, constraints ->
+            val placeable = measurable.measure(Constraints(maxWidth = constraints.maxWidth - 48.dp.roundToPx()))
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                vm.fx.frame.longValue // board position is known only after the first layout
+                val x = (constraints.maxWidth - placeable.width) / 2
+                val y = (vm.gridOrigin.y + vm.cellPx * 0.4f).roundToInt()
+                placeable.place(x, y)
+            }
+        },
+    ) {
+        Text(
+            text = text,
+            style = Styles.plain(15, Color.White, FontWeight.Bold),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xD9120B2E))
+                .border(1.dp, Palette.GlassBorder, RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        )
     }
 }
 

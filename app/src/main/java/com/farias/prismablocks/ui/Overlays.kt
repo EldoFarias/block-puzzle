@@ -1,20 +1,15 @@
 package com.farias.prismablocks.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -24,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -34,70 +28,52 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.farias.prismablocks.R
 import com.farias.prismablocks.ads.AdsManager
+import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameViewModel
+import com.farias.prismablocks.game.Mode
+import com.farias.prismablocks.game.Power
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 
 @Composable
-private fun Dim(content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xCC05040F))
-            .blockTouches(),
-        contentAlignment = Alignment.Center,
-    ) { content() }
-}
-
-@Composable
-private fun GlassCard(content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(28.dp)
-    Column(
-        modifier = Modifier
-            .padding(24.dp)
-            .widthIn(max = 380.dp)
-            .fillMaxWidth()
-            .clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xF2251B52), Color(0xF2110B2A))))
-            .border(1.dp, Palette.GlassBorder, shape)
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        content = content,
-    )
-}
-
-@Composable
-fun PauseOverlay(vm: GameViewModel, ads: AdsManager) {
-    Dim {
-        GlassCard {
+fun PauseOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
+    DimOverlay {
+        GlassPanel {
             Text(stringResource(R.string.paused), style = Styles.gradient(34))
             Spacer(Modifier.height(4.dp))
-            ToggleRow(stringResource(R.string.sound), vm.soundOn) { vm.toggleSound() }
-            ToggleRow(stringResource(R.string.vibration), vm.vibrationOn) { vm.toggleVibration() }
+            ToggleRow(stringResource(R.string.sound), Progress.soundOn) { Progress.toggleSound() }
+            ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) { Progress.toggleVibration() }
             Spacer(Modifier.height(8.dp))
             PrimaryButton(stringResource(R.string.resume)) { vm.paused = false }
             SecondaryButton(stringResource(R.string.restart)) {
                 vm.paused = false
                 ads.onNewGame { vm.restart() }
             }
-            if (ads.privacyOptionsRequired) {
-                Text(
-                    text = stringResource(R.string.privacy_options),
-                    style = Styles.plain(14, Palette.TextSecondary),
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .clickable { ads.showPrivacyOptions() }
-                        .padding(8.dp),
-                )
+            SecondaryButton(stringResource(R.string.home)) {
+                vm.paused = false
+                vm.save()
+                onHome()
             }
+            if (ads.privacyOptionsRequired) PrivacyLink(ads)
         }
     }
 }
 
 @Composable
-private fun ToggleRow(label: String, checked: Boolean, onToggle: () -> Unit) {
+fun PrivacyLink(ads: AdsManager) {
+    Text(
+        text = stringResource(R.string.privacy_options),
+        style = Styles.plain(14, Palette.TextSecondary),
+        modifier = Modifier
+            .padding(top = 4.dp)
+            .clickable { ads.showPrivacyOptions() }
+            .padding(8.dp),
+    )
+}
+
+@Composable
+fun ToggleRow(label: String, checked: Boolean, onToggle: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -122,20 +98,43 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-fun GameOverOverlay(vm: GameViewModel, ads: AdsManager) {
-    Dim {
-        GlassCard {
-            Text(
-                text = stringResource(if (vm.newRecord) R.string.new_record else R.string.no_space),
-                style = if (vm.newRecord) Styles.glow(28, Palette.Gold, FontWeight.Black) else Styles.plain(24, Palette.TextPrimary, FontWeight.Black),
-                textAlign = TextAlign.Center,
-            )
+private fun CoinsEarned(amount: Int) {
+    if (amount <= 0) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CoinIcon(Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.coins_earned, amount), style = Styles.glow(19, Palette.Gold, FontWeight.Black))
+    }
+}
+
+@Composable
+fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
+    val daily = vm.mode == Mode.DAILY
+    DimOverlay {
+        GlassPanel {
+            when {
+                daily -> Text(
+                    stringResource(R.string.daily_fail, (vm.dailyTarget - vm.lines).coerceAtLeast(1)),
+                    style = Styles.plain(24, Palette.TextPrimary, FontWeight.Black),
+                    textAlign = TextAlign.Center,
+                )
+                vm.newRecord -> Text(stringResource(R.string.new_record), style = Styles.glow(28, Palette.Gold, FontWeight.Black))
+                else -> Text(stringResource(R.string.no_space), style = Styles.plain(24, Palette.TextPrimary, FontWeight.Black))
+            }
             Text(stringResource(R.string.score), style = Styles.plain(14, Palette.TextSecondary))
             Text(vm.score.toString(), style = Styles.gradient(60))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CrownIcon(Modifier.height(18.dp).widthIn(min = 22.dp, max = 22.dp))
-                Spacer(Modifier.padding(4.dp))
-                Text(stringResource(R.string.best_x, vm.best), style = Styles.glow(17, Palette.Gold))
+            if (daily) {
+                Text(
+                    stringResource(R.string.lines_progress, vm.lines, vm.dailyTarget),
+                    style = Styles.plain(17, Palette.Cyan, FontWeight.Bold),
+                )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CrownIcon(Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.best_x, Progress.best), style = Styles.glow(17, Palette.Gold))
+                }
+                CoinsEarned(vm.coinsEarned)
             }
             Spacer(Modifier.height(8.dp))
             if (vm.canRevive && ads.adsReady) {
@@ -146,9 +145,80 @@ fun GameOverOverlay(vm: GameViewModel, ads: AdsManager) {
                     ads.showRewarded { vm.revive() }
                 }
             }
-            SecondaryButton(stringResource(R.string.play_again)) {
+            SecondaryButton(stringResource(if (daily) R.string.try_again else R.string.play_again)) {
                 ads.onNewGame { vm.restart() }
             }
+            SecondaryButton(stringResource(R.string.home)) { onHome() }
+        }
+    }
+}
+
+@Composable
+fun DailyWinOverlay(vm: GameViewModel, onHome: () -> Unit) {
+    DimOverlay {
+        GlassPanel {
+            Text(
+                stringResource(R.string.daily_win),
+                style = Styles.glow(28, Palette.Gold, FontWeight.Black),
+                textAlign = TextAlign.Center,
+            )
+            Text(stringResource(R.string.streak_days, vm.dailyStreak), style = Styles.glow(22, Color(0xFFFB923C), FontWeight.Black))
+            Text(vm.score.toString(), style = Styles.gradient(52))
+            CoinsEarned(vm.coinsEarned)
+            Spacer(Modifier.height(8.dp))
+            PrimaryButton(stringResource(R.string.home)) { onHome() }
+        }
+    }
+}
+
+@Composable
+fun PayWithVideoDialog(power: Power, ads: AdsManager, onWatch: () -> Unit, onCancel: () -> Unit) {
+    DimOverlay {
+        GlassPanel {
+            Text(stringResource(R.string.not_enough_title), style = Styles.plain(22, Palette.TextPrimary, FontWeight.Black))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CoinIcon(Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.need_coins, (power.cost - Progress.coins).coerceAtLeast(1)),
+                    style = Styles.plain(16, Palette.Gold, FontWeight.Bold),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            if (ads.adsReady && ads.rewardedReady) {
+                PrimaryButton(stringResource(R.string.watch_free)) { onWatch() }
+            } else {
+                Text(
+                    stringResource(R.string.no_video),
+                    style = Styles.plain(14, Palette.TextSecondary),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            SecondaryButton(stringResource(R.string.cancel)) { onCancel() }
+        }
+    }
+}
+
+@Composable
+fun HowToDialog(onClose: () -> Unit) {
+    DimOverlay {
+        GlassPanel {
+            Text(stringResource(R.string.how_to), style = Styles.gradient(30))
+            val steps = listOf(R.string.how_to_1, R.string.how_to_2, R.string.how_to_3, R.string.how_to_4)
+            steps.forEachIndexed { i, res ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                        androidx.compose.foundation.Canvas(Modifier.size(24.dp)) {
+                            drawGem(androidx.compose.ui.geometry.Offset.Zero, size.width, Palette.block(i + 1), glow = false)
+                        }
+                        Text("${i + 1}", style = Styles.plain(13, Color.White, FontWeight.Black))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(res), style = Styles.plain(16, Palette.TextPrimary, FontWeight.Medium))
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            PrimaryButton(stringResource(R.string.got_it)) { onClose() }
         }
     }
 }

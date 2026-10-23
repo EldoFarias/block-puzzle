@@ -10,7 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -173,4 +175,125 @@ fun CrownIcon(modifier: Modifier = Modifier) {
             CornerRadius(0.05f * h),
         )
     }
+}
+
+@Composable
+fun CoinIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val r = size.minDimension / 2f
+        val c = Offset(size.width / 2f, size.height / 2f)
+        drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFE680), Palette.Gold, Color(0xFFD97706))), r, c)
+        drawCircle(Color(0xFFB45309), r * 0.72f, c, style = androidx.compose.ui.graphics.drawscope.Stroke(r * 0.12f))
+        drawCircle(Color.White.copy(alpha = 0.7f), r * 0.16f, Offset(c.x - r * 0.35f, c.y - r * 0.4f))
+    }
+}
+
+/** Gold pill with the coin balance. [onPlus] shows a small "+" for getting more coins. */
+@Composable
+fun CoinPill(coins: Int, onPlus: (() -> Unit)? = null) {
+    val shape = RoundedCornerShape(50)
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .height(40.dp)
+            .clip(shape)
+            .background(Palette.Glass)
+            .border(1.dp, Palette.Gold.copy(alpha = 0.45f), shape)
+            .then(if (onPlus != null) Modifier.clickable(onClick = onPlus) else Modifier)
+            .padding(start = 8.dp, end = if (onPlus != null) 6.dp else 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoinIcon(Modifier.size(24.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+        Text(coins.toString(), style = Styles.glow(18, Palette.Gold))
+        if (onPlus != null) {
+            androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+            Box(
+                Modifier
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(Brush.verticalGradient(listOf(Color(0xFF34D399), Color(0xFF059669)))),
+                contentAlignment = Alignment.Center,
+            ) { Text("+", style = Styles.plain(18, Color.White, FontWeight.Black)) }
+        }
+    }
+}
+
+@Composable
+fun BombIcon(modifier: Modifier = Modifier, tint: Color = Palette.TextPrimary) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val c = Offset(w * 0.45f, h * 0.58f)
+        drawCircle(tint, w * 0.36f, c)
+        drawCircle(Color.White.copy(alpha = 0.35f), w * 0.09f, Offset(c.x - w * 0.13f, c.y - w * 0.13f))
+        drawLine(tint, Offset(w * 0.66f, h * 0.30f), Offset(w * 0.80f, h * 0.14f), strokeWidth = w * 0.09f)
+        drawCircle(Palette.Gold, w * 0.09f, Offset(w * 0.84f, h * 0.10f))
+    }
+}
+
+@Composable
+fun UndoIcon(modifier: Modifier = Modifier, tint: Color = Palette.TextPrimary) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = w * 0.12f
+        drawArc(
+            color = tint, startAngle = 180f, sweepAngle = 230f, useCenter = false,
+            topLeft = Offset(w * 0.18f, h * 0.22f), size = Size(w * 0.66f, h * 0.66f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+        )
+        val tip = Path().apply {
+            moveTo(w * 0.02f, h * 0.48f)
+            lineTo(w * 0.34f, h * 0.48f)
+            lineTo(w * 0.18f, h * 0.22f)
+            close()
+        }
+        drawPath(tip, tint)
+    }
+}
+
+@Composable
+fun ShuffleIcon(modifier: Modifier = Modifier, tint: Color = Palette.TextPrimary) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(w * 0.11f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        drawArc(tint, 200f, 140f, false, Offset(w * 0.12f, h * 0.12f), Size(w * 0.76f, h * 0.76f), style = stroke)
+        drawArc(tint, 20f, 140f, false, Offset(w * 0.12f, h * 0.12f), Size(w * 0.76f, h * 0.76f), style = stroke)
+        val a = Path().apply { moveTo(w * 0.70f, h * 0.02f); lineTo(w * 0.94f, h * 0.24f); lineTo(w * 0.64f, h * 0.30f); close() }
+        val b = Path().apply { moveTo(w * 0.30f, h * 0.98f); lineTo(w * 0.06f, h * 0.76f); lineTo(w * 0.36f, h * 0.70f); close() }
+        drawPath(a, tint)
+        drawPath(b, tint)
+    }
+}
+
+/** Full-screen dim layer that blocks touches behind it. */
+@Composable
+fun DimOverlay(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xCC05040F))
+            .blockTouches(),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+/** The premium glass panel used by every dialog. */
+@Composable
+fun GlassPanel(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(28.dp)
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier
+            .padding(24.dp)
+            .widthIn(max = 380.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xF2251B52), Color(0xF2110B2A))))
+            .border(1.dp, Palette.GlassBorder, shape)
+            .padding(horizontal = 24.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+        content = content,
+    )
 }
