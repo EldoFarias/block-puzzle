@@ -67,16 +67,19 @@ fun StatsScreen(onBack: () -> Unit) {
                 Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.stats), style = Styles.gradient(30))
             }
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                stats.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        row.forEach { StatCard(it, Modifier.weight(1f)) }
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val columns = if (maxWidth >= 600.dp) 4 else 2
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    stats.chunked(columns).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            row.forEach { StatCard(it, Modifier.weight(1f)) }
+                        }
                     }
                 }
             }

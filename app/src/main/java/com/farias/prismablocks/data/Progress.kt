@@ -67,6 +67,20 @@ object Progress {
     var levelStars by mutableStateOf(mapOf<Int, Int>())
         private set
 
+    // Daily missions
+    private var missionDay = 0
+    var missionProgress by mutableStateOf(List(Missions.COUNT) { 0 })
+        private set
+    var missionClaimed by mutableStateOf(List(Missions.COUNT) { false })
+        private set
+
+    // Daily chest (7-day calendar)
+    var chestLastDay by mutableIntStateOf(0)
+        private set
+    /** Consecutive days the chest was opened, as of [chestLastDay]. */
+    var chestRun by mutableIntStateOf(0)
+        private set
+
     val isReady: Boolean get() = ::prefs.isInitialized
 
     fun init(context: Context) {
@@ -91,6 +105,13 @@ object Progress {
         dailiesDone = prefs.getInt("dailies_done", 0)
         bestStreak = prefs.getInt("best_streak", 0)
         lastReviewAsk = prefs.getLong("last_review_ask", 0L)
+        missionDay = prefs.getInt("mission_day", 0)
+        missionProgress = (prefs.getString("mission_progress", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }
+            .let { if (it.size == Missions.COUNT) it else List(Missions.COUNT) { 0 } }
+        missionClaimed = (prefs.getString("mission_claimed", "") ?: "").split(",").map { it == "1" }
+            .let { if (it.size == Missions.COUNT) it else List(Missions.COUNT) { false } }
+        chestLastDay = prefs.getInt("chest_last_day", 0)
+        chestRun = prefs.getInt("chest_run", 0)
         adventureLevel = prefs.getInt("adventure_level", 1)
         levelStars = (prefs.getString("level_stars", "") ?: "").split(",").mapNotNull { e ->
             val p = e.split(":")
@@ -193,6 +214,100 @@ object Progress {
         if (!owns(id)) return
         themeId = id
         prefs.edit().putString("theme", id).apply()
+    }
+
+    // ------------------------------------------------------------------ daily missions
+
+    /** Read-only, safe to call while drawing the UI. */
+    fun todaysMissions(): List<Mission> = Missions.forDay(today())
+
+    fun missionProgressOf(index: Int): Int = if (missionDay == today()) missionProgress.getOrElse(index) { 0 } else 0
+
+    fun missionClaimedOf(index: Int): Boolean = missionDay == today() && missionClaimed.getOrElse(index) { false }
+
+    /** Starts a fresh set of missions when the day changes. Call from events, not from drawing. */
+    fun ensureMissionDay() {
+        val t = today()
+        if (missionDay == t) return
+        missionDay = t
+        missionProgress = List(Missions.COUNT) { 0 }
+        missionClaimed = List(Missions.COUNT) { false }
+        saveMissions()
+    }
+
+    private fun saveMissions() {
+        prefs.edit()
+            .putInt("mission_day", missionDay)
+            .putString("mission_progress", missionProgress.joinToString(","))
+            .putString("mission_claimed", missionClaimed.joinToString(",") { if (it) "1" else "0" })
+            .apply()
+    }
+
+    /**
+     * Reports progress for missions of [type]. With [asMax] the value is a record (best combo,
+     * best score) instead of an amount to add. Returns the missions completed by this event.
+     */
+    fun missionEvent(type: MissionType, value: Int, asMax: Boolean = false): List<Mission> {
+        if (value <= 0) return emptyList()
+        ensureMissionDay()
+        val missions = todaysMissions()
+        val progress = missionProgress.toMutableList()
+        val done = ArrayList<Mission>()
+        var changed = false
+        missions.forEachIndexed { i, m ->
+            if (m.type != type || progress[i] >= m.target) return@forEachIndexed
+            val next = (if (asMax) maxOf(progress[i], value) else progress[i] + value).coerceAtMost(m.target)
+            if (next != progress[i]) {
+                progress[i] = next
+                changed = true
+                if (next >= m.target) done.add(m)
+            }
+        }
+        if (changed) {
+            missionProgress = progress
+            saveMissions()
+        }
+        return done
+    }
+
+    /** Missions finished but not yet claimed. */
+    val claimableMissions: Int
+        get() {
+            val missions = todaysMissions()
+            return missions.indices.count { missionProgressOf(it) >= missions[it].target && !missionClaimedOf(it) }
+        }
+
+    /** Claims mission [index]; returns the coins earned (0 if not claimable). */
+    fun claimMission(index: Int): Int {
+        ensureMissionDay()
+        val missions = todaysMissions()
+        val m = missions.getOrNull(index) ?: return 0
+        if (missionProgress[index] < m.target || missionClaimed[index]) return 0
+        missionClaimed = missionClaimed.toMutableList().also { it[index] = true }
+        saveMissions()
+        addCoins(m.reward)
+        return m.reward
+    }
+
+    // ------------------------------------------------------------------ daily chest
+
+    val CHEST_REWARDS = listOf(20, 30, 40, 50, 70, 90, 150)
+
+    fun chestAvailable(): Boolean = chestLastDay != today()
+
+    /** Calendar position (0..6) of today's chest: the run continues only if yesterday was opened. */
+    fun chestIndex(): Int = if (chestLastDay == yesterday()) chestRun % CHEST_REWARDS.size else 0
+
+    /** Opens today's chest; [multiplier] is 2 when doubled with a video. Returns the coins earned. */
+    fun openChest(multiplier: Int): Int {
+        if (!chestAvailable()) return 0
+        val idx = chestIndex()
+        val reward = CHEST_REWARDS[idx] * multiplier
+        chestRun = if (chestLastDay == yesterday()) chestRun + 1 else 1
+        chestLastDay = today()
+        prefs.edit().putInt("chest_last_day", chestLastDay).putInt("chest_run", chestRun).apply()
+        addCoins(reward)
+        return reward
     }
 
     // ------------------------------------------------------------------ adventure

@@ -28,6 +28,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -114,6 +120,16 @@ fun HomeScreen(
         }
     }
 
+    var showMissions by remember { mutableStateOf(false) }
+    var showChest by remember { mutableStateOf(false) }
+    // The daily chest opens by itself the first time the menu appears each day.
+    LaunchedEffect(Unit) {
+        if (Progress.chestAvailable() && chestAutoShownDay != Progress.today()) {
+            chestAutoShownDay = Progress.today()
+            showChest = true
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         AuroraBackground()
         FloatingGems()
@@ -132,65 +148,87 @@ fun HomeScreen(
             ) {
                 CoinPill(Progress.coins, onPlus = { watchForCoins() })
                 Spacer(Modifier.weight(1f))
+                Box {
+                    GlassCircleButton(onClick = { showChest = true }) {
+                        ChestIcon(Modifier.fillMaxSize(), shaking = Progress.chestAvailable())
+                    }
+                    if (Progress.chestAvailable()) NotificationDot(Modifier.align(Alignment.TopEnd))
+                }
+                Spacer(Modifier.width(10.dp))
                 GlassCircleButton(onClick = { showSettings = true }) {
                     Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = Palette.TextPrimary)
                 }
             }
 
-            Spacer(Modifier.weight(0.7f))
-            Logo()
-            Spacer(Modifier.height(10.dp))
-            if (Progress.best > 0) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CrownIcon(Modifier.size(22.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.best_x, Progress.best), style = Styles.glow(18, Palette.Gold))
-                }
-            }
-            Spacer(Modifier.weight(0.5f))
-
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .widthIn(max = 420.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            BoxWithConstraints(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
             ) {
-                PlayButton(if (hasSave) stringResource(R.string.home_continue) else stringResource(R.string.home_play)) {
-                    sound.play(Sfx.WHOOSH, 0.7f)
-                    onPlay(hasSave)
-                }
-                if (hasSave) {
-                    Text(
-                        stringResource(R.string.home_new_game),
-                        style = Styles.plain(15, Palette.TextSecondary, FontWeight.Bold),
+                val sz = homeSizes(maxWidth, maxHeight)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = maxHeight)
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Logo(sz)
+                        if (Progress.best > 0) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CrownIcon(Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.best_x, Progress.best), style = Styles.glow(18, Palette.Gold))
+                            }
+                        }
+                    }
+                    Column(
                         modifier = Modifier
-                            .padding(top = 6.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onPlay(false) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                } else {
-                    Spacer(Modifier.height(16.dp))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AdventureCard(Modifier.weight(1f), onAdventure)
-                    DailyCard(Modifier.weight(1f), onDaily)
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    HomeTile(stringResource(R.string.themes), Modifier.weight(1f), onThemes) {
-                        PaletteIcon(Modifier.size(24.dp))
-                    }
-                    HomeTile(stringResource(R.string.tile_stats), Modifier.weight(1f), onStats) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(24.dp))
-                    }
-                    HomeTile(stringResource(R.string.how_to), Modifier.weight(1f), { showHowTo = true }) {
-                        Icon(Icons.Default.Info, contentDescription = null, tint = Palette.Cyan, modifier = Modifier.size(24.dp))
+                            .padding(horizontal = 20.dp)
+                            .widthIn(max = sz.contentWidth),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        PlayButton(if (hasSave) stringResource(R.string.home_continue) else stringResource(R.string.home_play), sz.playHeight) {
+                            sound.play(Sfx.WHOOSH, 0.7f)
+                            onPlay(hasSave)
+                        }
+                        if (hasSave) {
+                            Text(
+                                stringResource(R.string.home_new_game),
+                                style = Styles.plain(15, Palette.TextSecondary, FontWeight.Bold),
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onPlay(false) }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        } else {
+                            Spacer(Modifier.height(sz.gap))
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AdventureCard(Modifier.weight(1f), sz.cardHeight, onAdventure)
+                            DailyCard(Modifier.weight(1f), sz.cardHeight, onDaily)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            HomeTile(stringResource(R.string.missions), Modifier.weight(1f), sz.tileHeight, Progress.claimableMissions, { showMissions = true }) {
+                                MissionIcon(Modifier.size(24.dp))
+                            }
+                            HomeTile(stringResource(R.string.themes), Modifier.weight(1f), sz.tileHeight, 0, onThemes) {
+                                PaletteIcon(Modifier.size(24.dp))
+                            }
+                            HomeTile(stringResource(R.string.tile_stats), Modifier.weight(1f), sz.tileHeight, 0, onStats) {
+                                Icon(Icons.Default.Star, contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(24.dp))
+                            }
+                        }
                     }
                 }
             }
-            Spacer(Modifier.weight(1f))
             BannerAd(ads)
         }
 
@@ -205,15 +243,69 @@ fun HomeScreen(
                         enableNotifications()
                     }
                 },
+                onHowTo = {
+                    showSettings = false
+                    showHowTo = true
+                },
                 onClose = { showSettings = false },
             )
         }
         if (showHowTo) HowToDialog { showHowTo = false }
+        if (showMissions) MissionsDialog(sound) { showMissions = false }
+        if (showChest) ChestDialog(ads, sound) { showChest = false }
+    }
+}
+
+/** Day the chest was last opened automatically, so it pops up only once per day. */
+private var chestAutoShownDay = 0
+
+/** Sizes for the menu: compact on short phones, larger on tablets. */
+private class HomeSizes(
+    val logo: Dp,
+    val title: Int,
+    val subtitle: Int,
+    val playHeight: Dp,
+    val cardHeight: Dp,
+    val tileHeight: Dp,
+    val contentWidth: Dp,
+    val gap: Dp,
+)
+
+private fun homeSizes(width: Dp, height: Dp): HomeSizes = when {
+    width >= 600.dp && height >= 700.dp -> HomeSizes(128.dp, 64, 28, 80.dp, 140.dp, 88.dp, 560.dp, 16.dp)
+    height < 560.dp -> HomeSizes(56.dp, 34, 16, 56.dp, 100.dp, 62.dp, 420.dp, 4.dp)
+    height < 640.dp -> HomeSizes(72.dp, 40, 19, 60.dp, 108.dp, 66.dp, 420.dp, 8.dp)
+    else -> HomeSizes(96.dp, 48, 22, 68.dp, 118.dp, 72.dp, 420.dp, 16.dp)
+}
+
+@Composable
+private fun NotificationDot(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(12.dp)
+            .clip(CircleShape)
+            .background(Palette.Danger)
+            .border(1.5.dp, Color.White, CircleShape),
+    )
+}
+
+@Composable
+private fun MissionIcon(modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        drawRoundRect(Color(0xFF34D399), Offset(w * 0.15f, h * 0.08f), androidx.compose.ui.geometry.Size(w * 0.7f, h * 0.86f), androidx.compose.ui.geometry.CornerRadius(w * 0.12f))
+        val line = Color.White.copy(alpha = 0.9f)
+        for (i in 0 until 3) {
+            val y = h * (0.3f + i * 0.22f)
+            drawCircle(line, w * 0.05f, Offset(w * 0.32f, y))
+            drawLine(line, Offset(w * 0.42f, y), Offset(w * 0.72f, y), w * 0.08f)
+        }
     }
 }
 
 @Composable
-private fun Logo() {
+private fun Logo(sz: HomeSizes) {
     val transition = rememberInfiniteTransition(label = "logo")
     val t by transition.animateFloat(
         0f, 6.2832f, infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart), label = "bob",
@@ -221,7 +313,7 @@ private fun Logo() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(
             Modifier
-                .size(96.dp)
+                .size(sz.logo)
                 .graphicsLayer { translationY = sin(t) * 6.dp.toPx() },
         ) {
             val unit = size.width * 0.46f
@@ -234,14 +326,14 @@ private fun Logo() {
                 drawGem(Offset(col * (unit + gap) + gap / 2f, row * (unit + gap) + gap / 2f + bob), unit, Palette.block(colors[i]))
             }
         }
-        Spacer(Modifier.height(14.dp))
-        Text("PRISMA", style = Styles.gradient(48))
-        Text("BLOCKS", style = Styles.glow(22, Color.White, FontWeight.Black).copy(letterSpacing = 9.sp))
+        Spacer(Modifier.height(10.dp))
+        Text("PRISMA", style = Styles.gradient(sz.title))
+        Text("BLOCKS", style = Styles.glow(sz.subtitle, Color.White, FontWeight.Black).copy(letterSpacing = (sz.subtitle * 0.4f).sp))
     }
 }
 
 @Composable
-private fun PlayButton(text: String, onClick: () -> Unit) {
+private fun PlayButton(text: String, height: Dp, onClick: () -> Unit) {
     val transition = rememberInfiniteTransition(label = "play")
     val pulse by transition.animateFloat(
         1f, 1.04f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "pulse",
@@ -250,7 +342,7 @@ private fun PlayButton(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
+            .height(height)
             .graphicsLayer {
                 scaleX = pulse
                 scaleY = pulse
@@ -280,6 +372,7 @@ private fun PlayButton(text: String, onClick: () -> Unit) {
 @Composable
 private fun ModeCard(
     modifier: Modifier,
+    height: Dp,
     title: String,
     subtitle: String,
     colors: List<Color>,
@@ -291,7 +384,7 @@ private fun ModeCard(
     val shape = RoundedCornerShape(22.dp)
     Box(
         modifier = modifier
-            .height(118.dp)
+            .height(height)
             .clip(shape)
             .background(Brush.linearGradient(colors.map { it.copy(alpha = 0.28f) }))
             .border(1.5.dp, Brush.linearGradient(colors), shape)
@@ -322,9 +415,10 @@ private fun ModeCard(
 }
 
 @Composable
-private fun AdventureCard(modifier: Modifier, onClick: () -> Unit) {
+private fun AdventureCard(modifier: Modifier, height: Dp, onClick: () -> Unit) {
     ModeCard(
         modifier = modifier,
+        height = height,
         title = stringResource(R.string.adventure),
         subtitle = stringResource(R.string.level_x, Progress.adventureLevel),
         colors = listOf(Color(0xFFE879F9), Color(0xFF8B5CF6)),
@@ -336,12 +430,13 @@ private fun AdventureCard(modifier: Modifier, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DailyCard(modifier: Modifier, onDaily: () -> Unit) {
+private fun DailyCard(modifier: Modifier, height: Dp, onDaily: () -> Unit) {
     val done = Progress.dailyDoneToday()
     val streak = Progress.currentStreak()
     val target = GameViewModel.dailyTargetFor(Progress.today())
     ModeCard(
         modifier = modifier,
+        height = height,
         title = stringResource(R.string.daily_title),
         subtitle = if (done) stringResource(R.string.daily_done) else stringResource(R.string.daily_goal, target),
         colors = listOf(Palette.Cyan, Color(0xFF34D399)),
@@ -359,22 +454,43 @@ private fun DailyCard(modifier: Modifier, onDaily: () -> Unit) {
 }
 
 @Composable
-private fun HomeTile(label: String, modifier: Modifier, onClick: () -> Unit, icon: @Composable () -> Unit) {
+private fun HomeTile(
+    label: String,
+    modifier: Modifier,
+    height: Dp,
+    badge: Int,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
     val shape = RoundedCornerShape(18.dp)
-    Column(
-        modifier = modifier
-            .height(72.dp)
-            .clip(shape)
-            .background(Palette.Glass)
-            .border(1.dp, Palette.GlassBorder, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        icon()
-        Spacer(Modifier.height(6.dp))
-        Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), maxLines = 1)
+    Box(modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .clip(shape)
+                .background(Palette.Glass)
+                .border(1.dp, if (badge > 0) Color(0xFF34D399) else Palette.GlassBorder, shape)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            icon()
+            Spacer(Modifier.height(6.dp))
+            Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), maxLines = 1)
+        }
+        if (badge > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(Palette.Danger),
+                contentAlignment = Alignment.Center,
+            ) { Text(badge.toString(), style = Styles.plain(12, Color.White, FontWeight.Black)) }
+        }
     }
 }
 
@@ -412,7 +528,7 @@ private fun FloatingGems() {
 }
 
 @Composable
-private fun SettingsDialog(ads: AdsManager, onToggleReminder: () -> Unit, onClose: () -> Unit) {
+private fun SettingsDialog(ads: AdsManager, onToggleReminder: () -> Unit, onHowTo: () -> Unit, onClose: () -> Unit) {
     DimOverlay {
         GlassPanel {
             Text(stringResource(R.string.settings), style = Styles.gradient(30))
@@ -426,6 +542,7 @@ private fun SettingsDialog(ads: AdsManager, onToggleReminder: () -> Unit, onClos
             ToggleRow(stringResource(R.string.notifications), Progress.notificationsOn) { onToggleReminder() }
             if (ads.privacyOptionsRequired) PrivacyLink(ads)
             Spacer(Modifier.height(4.dp))
+            SecondaryButton(stringResource(R.string.how_to)) { onHowTo() }
             PrimaryButton(stringResource(R.string.got_it)) { onClose() }
         }
     }

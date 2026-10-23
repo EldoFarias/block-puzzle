@@ -93,4 +93,19 @@
     <string name="gems_progress">Steine %1$d/%2$d</string>
     <string name="points_progress">Ziel %1$d</string>
     <string name="play">Spielen</string>
+    <string name="missions">Missionen</string>
+    <string name="claim">Abholen</string>
+    <string name="mission_lines">Räume %1$d Reihen ab</string>
+    <string name="mission_pieces">Lege %1$d Teile</string>
+    <string name="mission_combo">Schaffe einen COMBO x%1$d</string>
+    <string name="mission_score">Erziele %1$d Punkte in einem Spiel</string>
+    <string name="mission_games">Beende %1$d Spiele</string>
+    <string name="mission_gems">Sammle %1$d Edelsteine im Abenteuer</string>
+    <string name="mission_levels">Schaffe %1$d Abenteuer-Level</string>
+    <string name="mission_done">Mission erfüllt! ✓</string>
+    <string name="daily_reward">Tägliche Belohnung</string>
+    <string name="day_x">Tag %1$d</string>
+    <string name="collect">%1$d abholen</string>
+    <string name="collect_double">▶  %1$d abholen (doppelt)</string>
+    <string name="chest_tomorrow">Komm morgen für die nächste Belohnung wieder</string>
 </resources>

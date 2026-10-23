@@ -93,4 +93,19 @@
     <string name="gems_progress">Mücevher %1$d/%2$d</string>
     <string name="points_progress">Hedef %1$d</string>
     <string name="play">Oyna</string>
+    <string name="missions">Görevler</string>
+    <string name="claim">Al</string>
+    <string name="mission_lines">%1$d satır temizle</string>
+    <string name="mission_pieces">%1$d parça yerleştir</string>
+    <string name="mission_combo">KOMBO x%1$d yap</string>
+    <string name="mission_score">Tek oyunda %1$d puan yap</string>
+    <string name="mission_games">%1$d oyun bitir</string>
+    <string name="mission_gems">Macerada %1$d mücevher topla</string>
+    <string name="mission_levels">%1$d macera bölümü kazan</string>
+    <string name="mission_done">Görev tamamlandı! ✓</string>
+    <string name="daily_reward">Günlük ödül</string>
+    <string name="day_x">Gün %1$d</string>
+    <string name="collect">%1$d al</string>
+    <string name="collect_double">▶  %1$d al (iki kat)</string>
+    <string name="chest_tomorrow">Sonraki ödül için yarın gel</string>
 </resources>

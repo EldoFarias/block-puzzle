@@ -61,6 +61,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -70,6 +71,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.farias.prismablocks.R
+import com.google.android.gms.ads.AdSize
 import com.farias.prismablocks.ads.AdsManager
 import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.data.Progress
@@ -119,32 +121,83 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
         AuroraBackground()
 
         BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
-            // Fixed parts: top bar 52, score 100, gap 14, power bar 70, banner ~64, margins 20.
-            val boardSide = minOf(maxWidth - 28.dp, (maxHeight - 330.dp) / 1.34f).coerceAtLeast(200.dp)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { translationX = vm.fx.shake.floatValue },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                TopBar(vm)
-                ScoreHeader(vm)
-                Spacer(Modifier.weight(1f))
-                Board(vm, boardSide) { r, c ->
-                    if (!vm.bombHits(r, c)) vm.playInvalid()
-                    else pay(Power.BOMB) { vm.bomb(r, c) }
+            val context = LocalContext.current
+            val widthDp = maxWidth.value.toInt()
+            @Suppress("DEPRECATION")
+            val bannerH = remember(widthDp) {
+                AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, widthDp).height.dp
+            }
+            val onBombTap: (Int, Int) -> Unit = { r, c ->
+                if (!vm.bombHits(r, c)) vm.playInvalid()
+                else pay(Power.BOMB) { vm.bomb(r, c) }
+            }
+            val onPower: (Power) -> Unit = { p ->
+                when (p) {
+                    Power.UNDO -> pay(p) { vm.undo() }
+                    Power.SHUFFLE -> pay(p) { vm.shuffle() }
+                    Power.BOMB -> vm.bombMode = !vm.bombMode
                 }
-                Spacer(Modifier.height(14.dp))
-                Tray(vm, boardSide)
-                PowerBar(vm, boardSide) { p ->
-                    when (p) {
-                        Power.UNDO -> pay(p) { vm.undo() }
-                        Power.SHUFFLE -> pay(p) { vm.shuffle() }
-                        Power.BOMB -> vm.bombMode = !vm.bombMode
+            }
+            // Wide window (split screen, foldable, tablet in landscape): board in the middle,
+            // info on the left, pieces on the right.
+            val landscape = maxWidth > maxHeight * 1.05f
+            if (landscape) {
+                val boardSide = minOf(maxHeight - bannerH - 24.dp, maxWidth * 0.46f).coerceIn(160.dp, 640.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { translationX = vm.fx.shake.floatValue },
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            TopBar(vm, GameDims.normal)
+                            ScoreHeader(vm, GameDims.normal)
+                            Spacer(Modifier.weight(1f))
+                            PowerBar(vm, null, GameDims.normal, vertical = true, showLabels = true, onUse = onPower)
+                            Spacer(Modifier.weight(1f))
+                        }
+                        Board(vm, boardSide, onBombTap)
+                        TrayColumn(
+                            vm,
+                            Modifier
+                                .weight(1f)
+                                .height(boardSide),
+                        )
                     }
+                    BannerAd(ads)
                 }
-                Spacer(Modifier.weight(1f))
-                BannerAd(ads)
+            } else {
+                // Portrait: shrink the fixed parts on short phones, cap the board on tablets.
+                val dims = if (maxHeight < 660.dp) GameDims.compact else GameDims.normal
+                val fixed = dims.topBar + dims.header + dims.gap + dims.powerBar + bannerH + 12.dp
+                val boardSide = minOf(maxWidth - 24.dp, (maxHeight - fixed) / 1.34f).coerceIn(150.dp, 620.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { translationX = vm.fx.shake.floatValue },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    TopBar(vm, dims)
+                    ScoreHeader(vm, dims)
+                    Spacer(Modifier.weight(1f))
+                    Board(vm, boardSide, onBombTap)
+                    Spacer(Modifier.height(dims.gap))
+                    Tray(vm, boardSide)
+                    // Narrow boards (small phones) show icons + price only.
+                    PowerBar(vm, boardSide, dims, vertical = false, showLabels = boardSide >= 330.dp, onUse = onPower)
+                    Spacer(Modifier.weight(1f))
+                    BannerAd(ads)
+                }
             }
         }
 
@@ -196,11 +249,11 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
 // --------------------------------------------------------------------------- header
 
 @Composable
-private fun TopBar(vm: GameViewModel) {
+private fun TopBar(vm: GameViewModel, dims: GameDims) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(dims.topBar)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -226,16 +279,16 @@ private fun TopBar(vm: GameViewModel) {
 }
 
 @Composable
-private fun ScoreHeader(vm: GameViewModel) {
+private fun ScoreHeader(vm: GameViewModel, dims: GameDims) {
     val shown by animateIntAsState(vm.score, tween(450), label = "score")
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp),
+            .height(dims.header),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(shown.toString(), style = Styles.gradient(52))
+        Text(shown.toString(), style = Styles.gradient(dims.scoreSp))
         Box(Modifier.height(30.dp), contentAlignment = Alignment.Center) {
             val lv = vm.level
             if (vm.mode == Mode.DAILY) {
@@ -442,6 +495,16 @@ private fun Tray(vm: GameViewModel, boardSide: Dp) {
     }
 }
 
+/** Pieces stacked vertically, for the wide (landscape) layout. */
+@Composable
+private fun TrayColumn(vm: GameViewModel, modifier: Modifier) {
+    Column(modifier.padding(horizontal = 8.dp)) {
+        for (i in 0 until 3) {
+            TraySlot(vm, i, Modifier.weight(1f).fillMaxWidth())
+        }
+    }
+}
+
 @Composable
 private fun TraySlot(vm: GameViewModel, slot: Int, modifier: Modifier) {
     val piece = vm.tray[slot]
@@ -495,17 +558,29 @@ private fun TraySlot(vm: GameViewModel, slot: Int, modifier: Modifier) {
 // --------------------------------------------------------------------------- power-ups
 
 @Composable
-private fun PowerBar(vm: GameViewModel, width: Dp, onUse: (Power) -> Unit) {
-    Row(
-        modifier = Modifier
-            .width(width)
-            .height(70.dp)
-            .padding(top = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-    ) {
-        PowerButton(vm, Power.UNDO, stringResource(R.string.power_undo), onUse) { UndoIcon(it) }
-        PowerButton(vm, Power.BOMB, stringResource(R.string.power_bomb), onUse) { BombIcon(it) }
-        PowerButton(vm, Power.SHUFFLE, stringResource(R.string.power_shuffle), onUse) { ShuffleIcon(it) }
+private fun PowerBar(
+    vm: GameViewModel,
+    width: Dp?,
+    dims: GameDims,
+    vertical: Boolean,
+    showLabels: Boolean,
+    onUse: (Power) -> Unit,
+) {
+    val buttons: @Composable () -> Unit = {
+        PowerButton(vm, Power.UNDO, stringResource(R.string.power_undo), dims, showLabels, onUse) { UndoIcon(it) }
+        PowerButton(vm, Power.BOMB, stringResource(R.string.power_bomb), dims, showLabels, onUse) { BombIcon(it) }
+        PowerButton(vm, Power.SHUFFLE, stringResource(R.string.power_shuffle), dims, showLabels, onUse) { ShuffleIcon(it) }
+    }
+    if (vertical) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) { buttons() }
+    } else {
+        Row(
+            modifier = Modifier
+                .then(if (width != null) Modifier.width(width) else Modifier)
+                .height(dims.powerBar)
+                .padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        ) { buttons() }
     }
 }
 
@@ -514,6 +589,8 @@ private fun PowerButton(
     vm: GameViewModel,
     power: Power,
     label: String,
+    dims: GameDims,
+    showLabels: Boolean,
     onUse: (Power) -> Unit,
     icon: @Composable (Modifier) -> Unit,
 ) {
@@ -522,7 +599,7 @@ private fun PowerButton(
     val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
-            .height(56.dp)
+            .height(dims.powerBar - 14.dp)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(if (active) Palette.Danger.copy(alpha = 0.25f) else Palette.Glass)
@@ -531,10 +608,10 @@ private fun PowerButton(
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        icon(Modifier.size(26.dp))
-        Spacer(Modifier.width(8.dp))
+        icon(Modifier.size(if (showLabels) 26.dp else 22.dp))
+        Spacer(Modifier.width(if (showLabels) 8.dp else 6.dp))
         Column {
-            Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold))
+            if (showLabels) Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), maxLines = 1)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CoinIcon(Modifier.size(12.dp))
                 Spacer(Modifier.width(4.dp))
@@ -682,5 +759,19 @@ private fun FloatingTextItem(t: FloatText, fx: Fx) {
                 alpha = if (prog > 0.7f) (1f - (prog - 0.7f) / 0.3f).coerceIn(0f, 1f) else 1f
             },
         )
+    }
+}
+
+/** Sizes of the fixed parts of the game screen. */
+private class GameDims(
+    val topBar: Dp,
+    val header: Dp,
+    val scoreSp: Int,
+    val gap: Dp,
+    val powerBar: Dp,
+) {
+    companion object {
+        val normal = GameDims(topBar = 52.dp, header = 100.dp, scoreSp = 52, gap = 14.dp, powerBar = 70.dp)
+        val compact = GameDims(topBar = 44.dp, header = 74.dp, scoreSp = 38, gap = 8.dp, powerBar = 58.dp)
     }
 }

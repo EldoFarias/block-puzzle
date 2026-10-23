@@ -93,4 +93,19 @@
     <string name="gems_progress">Gemmes %1$d/%2$d</string>
     <string name="points_progress">Objectif %1$d</string>
     <string name="play">Jouer</string>
+    <string name="missions">Missions</string>
+    <string name="claim">Récupérer</string>
+    <string name="mission_lines">Effacez %1$d lignes</string>
+    <string name="mission_pieces">Placez %1$d pièces</string>
+    <string name="mission_combo">Faites un COMBO x%1$d</string>
+    <string name="mission_score">Marquez %1$d points en une partie</string>
+    <string name="mission_games">Terminez %1$d parties</string>
+    <string name="mission_gems">Récoltez %1$d gemmes en Aventure</string>
+    <string name="mission_levels">Réussissez %1$d niveaux d\'Aventure</string>
+    <string name="mission_done">Mission accomplie ! ✓</string>
+    <string name="daily_reward">Récompense du jour</string>
+    <string name="day_x">Jour %1$d</string>
+    <string name="collect">Récupérer %1$d</string>
+    <string name="collect_double">▶  Récupérer %1$d (double)</string>
+    <string name="chest_tomorrow">Revenez demain pour la prochaine récompense</string>
 </resources>

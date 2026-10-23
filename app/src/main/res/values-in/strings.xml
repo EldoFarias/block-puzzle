@@ -93,4 +93,19 @@
     <string name="gems_progress">Permata %1$d/%2$d</string>
     <string name="points_progress">Target %1$d</string>
     <string name="play">Main</string>
+    <string name="missions">Misi</string>
+    <string name="claim">Ambil</string>
+    <string name="mission_lines">Hapus %1$d baris</string>
+    <string name="mission_pieces">Letakkan %1$d balok</string>
+    <string name="mission_combo">Buat KOMBO x%1$d</string>
+    <string name="mission_score">Raih %1$d poin dalam satu permainan</string>
+    <string name="mission_games">Selesaikan %1$d permainan</string>
+    <string name="mission_gems">Kumpulkan %1$d permata di Petualangan</string>
+    <string name="mission_levels">Menangkan %1$d level Petualangan</string>
+    <string name="mission_done">Misi selesai! ✓</string>
+    <string name="daily_reward">Hadiah harian</string>
+    <string name="day_x">Hari %1$d</string>
+    <string name="collect">Ambil %1$d</string>
+    <string name="collect_double">▶  Ambil %1$d (ganda)</string>
+    <string name="chest_tomorrow">Kembali besok untuk hadiah berikutnya</string>
 </resources>

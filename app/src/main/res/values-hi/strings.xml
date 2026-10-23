@@ -93,4 +93,19 @@
     <string name="gems_progress">रत्न %1$d/%2$d</string>
     <string name="points_progress">लक्ष्य %1$d</string>
     <string name="play">खेलें</string>
+    <string name="missions">मिशन</string>
+    <string name="claim">लें</string>
+    <string name="mission_lines">%1$d लाइनें साफ़ करें</string>
+    <string name="mission_pieces">%1$d टुकड़े रखें</string>
+    <string name="mission_combo">कॉम्बो x%1$d बनाएँ</string>
+    <string name="mission_score">एक गेम में %1$d अंक बनाएँ</string>
+    <string name="mission_games">%1$d गेम पूरे करें</string>
+    <string name="mission_gems">एडवेंचर में %1$d रत्न इकट्ठा करें</string>
+    <string name="mission_levels">एडवेंचर के %1$d लेवल जीतें</string>
+    <string name="mission_done">मिशन पूरा! ✓</string>
+    <string name="daily_reward">रोज़ का इनाम</string>
+    <string name="day_x">दिन %1$d</string>
+    <string name="collect">%1$d लें</string>
+    <string name="collect_double">▶  %1$d लें (दोगुना)</string>
+    <string name="chest_tomorrow">अगले इनाम के लिए कल फिर आएँ</string>
 </resources>

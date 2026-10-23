@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -270,13 +274,23 @@ fun ShuffleIcon(modifier: Modifier = Modifier, tint: Color = Palette.TextPrimary
 /** Full-screen dim layer that blocks touches behind it. */
 @Composable
 fun DimOverlay(content: @Composable () -> Unit) {
-    Box(
+    androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xCC05040F))
-            .blockTouches(),
-        contentAlignment = Alignment.Center,
-    ) { content() }
+            .blockTouches()
+            .systemBarsPadding(),
+    ) {
+        // Centered when it fits; scrolls on short screens instead of being cut off.
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        ) { content() }
+    }
 }
 
 /** The premium glass panel used by every dialog. */

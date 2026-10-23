@@ -6,6 +6,7 @@ KEYS = [k for k in re.findall(r'<string name="([^"]+)">', open(os.path.join(RES,
 
 T = {
 "fr": dict(
+ missions="Missions", claim="Récupérer", mission_lines="Effacez %1$d lignes", mission_pieces="Placez %1$d pièces", mission_combo="Faites un COMBO x%1$d", mission_score="Marquez %1$d points en une partie", mission_games="Terminez %1$d parties", mission_gems="Récoltez %1$d gemmes en Aventure", mission_levels="Réussissez %1$d niveaux d'Aventure", mission_done="Mission accomplie ! ✓", daily_reward="Récompense du jour", day_x="Jour %1$d", collect="Récupérer %1$d", collect_double="▶  Récupérer %1$d (double)", chest_tomorrow="Revenez demain pour la prochaine récompense",
  adventure="Aventure", level_x="Niveau %1$d", goal_gems="Récoltez %1$d gemmes", goal_lines="Effacez %1$d lignes", goal_score="Marquez %1$d points", stars_hint="★★★ en %1$d coups maximum", level_complete="NIVEAU RÉUSSI !", next_level="Niveau suivant", map="Carte", left_gems="Encore %1$d gemmes !", left_points="Encore %1$d points !", gems_progress="Gemmes %1$d/%2$d", points_progress="Objectif %1$d", play="Jouer",
  paused="Pause", sound="Sons", vibration="Vibration", resume="Reprendre", restart="Recommencer",
  privacy_options="Confidentialité et publicités", no_space="Plus de place !", new_record="NOUVEAU RECORD !",
@@ -31,6 +32,7 @@ T = {
  stat_best_streak="Meilleure série", stat_coins="Pièces", near_record="Plus que %1$d points pour battre votre record !",
 ),
 "de": dict(
+ missions="Missionen", claim="Abholen", mission_lines="Räume %1$d Reihen ab", mission_pieces="Lege %1$d Teile", mission_combo="Schaffe einen COMBO x%1$d", mission_score="Erziele %1$d Punkte in einem Spiel", mission_games="Beende %1$d Spiele", mission_gems="Sammle %1$d Edelsteine im Abenteuer", mission_levels="Schaffe %1$d Abenteuer-Level", mission_done="Mission erfüllt! ✓", daily_reward="Tägliche Belohnung", day_x="Tag %1$d", collect="%1$d abholen", collect_double="▶  %1$d abholen (doppelt)", chest_tomorrow="Komm morgen für die nächste Belohnung wieder",
  adventure="Abenteuer", level_x="Level %1$d", goal_gems="Sammle %1$d Edelsteine", goal_lines="Räume %1$d Reihen ab", goal_score="Erziele %1$d Punkte", stars_hint="★★★ in höchstens %1$d Zügen", level_complete="LEVEL GESCHAFFT!", next_level="Nächstes Level", map="Karte", left_gems="Noch %1$d Edelsteine!", left_points="Noch %1$d Punkte!", gems_progress="Steine %1$d/%2$d", points_progress="Ziel %1$d", play="Spielen",
  paused="Pause", sound="Sound", vibration="Vibration", resume="Weiter", restart="Neu starten",
  privacy_options="Datenschutz und Werbung", no_space="Kein Platz mehr!", new_record="NEUER REKORD!",
@@ -56,6 +58,7 @@ T = {
  stat_best_streak="Längste Serie", stat_coins="Münzen", near_record="Nur %1$d Punkte bis zu deinem Rekord!",
 ),
 "tr": dict(
+ missions="Görevler", claim="Al", mission_lines="%1$d satır temizle", mission_pieces="%1$d parça yerleştir", mission_combo="KOMBO x%1$d yap", mission_score="Tek oyunda %1$d puan yap", mission_games="%1$d oyun bitir", mission_gems="Macerada %1$d mücevher topla", mission_levels="%1$d macera bölümü kazan", mission_done="Görev tamamlandı! ✓", daily_reward="Günlük ödül", day_x="Gün %1$d", collect="%1$d al", collect_double="▶  %1$d al (iki kat)", chest_tomorrow="Sonraki ödül için yarın gel",
  adventure="Macera", level_x="Bölüm %1$d", goal_gems="%1$d mücevher topla", goal_lines="%1$d satır temizle", goal_score="%1$d puan yap", stars_hint="★★★ en fazla %1$d hamlede", level_complete="BÖLÜM TAMAMLANDI!", next_level="Sonraki bölüm", map="Harita", left_gems="%1$d mücevher kaldı!", left_points="%1$d puan kaldı!", gems_progress="Mücevher %1$d/%2$d", points_progress="Hedef %1$d", play="Oyna",
  paused="Duraklatıldı", sound="Ses", vibration="Titreşim", resume="Devam et", restart="Yeniden başlat",
  privacy_options="Gizlilik ve reklam seçenekleri", no_space="Yer kalmadı!", new_record="YENİ REKOR!",
@@ -81,6 +84,7 @@ T = {
  stat_best_streak="En uzun seri", stat_coins="Altın", near_record="Rekoruna sadece %1$d puan kaldı!",
 ),
 "in": dict(
+ missions="Misi", claim="Ambil", mission_lines="Hapus %1$d baris", mission_pieces="Letakkan %1$d balok", mission_combo="Buat KOMBO x%1$d", mission_score="Raih %1$d poin dalam satu permainan", mission_games="Selesaikan %1$d permainan", mission_gems="Kumpulkan %1$d permata di Petualangan", mission_levels="Menangkan %1$d level Petualangan", mission_done="Misi selesai! ✓", daily_reward="Hadiah harian", day_x="Hari %1$d", collect="Ambil %1$d", collect_double="▶  Ambil %1$d (ganda)", chest_tomorrow="Kembali besok untuk hadiah berikutnya",
  adventure="Petualangan", level_x="Level %1$d", goal_gems="Kumpulkan %1$d permata", goal_lines="Hapus %1$d baris", goal_score="Raih %1$d poin", stars_hint="★★★ dalam %1$d langkah atau kurang", level_complete="LEVEL SELESAI!", next_level="Level berikutnya", map="Peta", left_gems="Kurang %1$d permata lagi!", left_points="Kurang %1$d poin lagi!", gems_progress="Permata %1$d/%2$d", points_progress="Target %1$d", play="Main",
  paused="Dijeda", sound="Suara", vibration="Getar", resume="Lanjutkan", restart="Mulai ulang",
  privacy_options="Privasi dan iklan", no_space="Tidak ada tempat lagi!", new_record="REKOR BARU!",
@@ -106,6 +110,7 @@ T = {
  stat_best_streak="Rentetan terbaik", stat_coins="Koin", near_record="Hanya kurang %1$d poin dari rekormu!",
 ),
 "hi": dict(
+ missions="मिशन", claim="लें", mission_lines="%1$d लाइनें साफ़ करें", mission_pieces="%1$d टुकड़े रखें", mission_combo="कॉम्बो x%1$d बनाएँ", mission_score="एक गेम में %1$d अंक बनाएँ", mission_games="%1$d गेम पूरे करें", mission_gems="एडवेंचर में %1$d रत्न इकट्ठा करें", mission_levels="एडवेंचर के %1$d लेवल जीतें", mission_done="मिशन पूरा! ✓", daily_reward="रोज़ का इनाम", day_x="दिन %1$d", collect="%1$d लें", collect_double="▶  %1$d लें (दोगुना)", chest_tomorrow="अगले इनाम के लिए कल फिर आएँ",
  adventure="एडवेंचर", level_x="लेवल %1$d", goal_gems="%1$d रत्न इकट्ठा करें", goal_lines="%1$d लाइनें साफ़ करें", goal_score="%1$d अंक बनाएँ", stars_hint="★★★ ज़्यादा से ज़्यादा %1$d चालों में", level_complete="लेवल पूरा!", next_level="अगला लेवल", map="मैप", left_gems="%1$d रत्न बाकी थे!", left_points="%1$d अंक बाकी थे!", gems_progress="रत्न %1$d/%2$d", points_progress="लक्ष्य %1$d", play="खेलें",
  paused="रुका हुआ", sound="आवाज़", vibration="वाइब्रेशन", resume="जारी रखें", restart="फिर से शुरू करें",
  privacy_options="प्राइवेसी और विज्ञापन विकल्प", no_space="जगह खत्म!", new_record="नया रिकॉर्ड!",

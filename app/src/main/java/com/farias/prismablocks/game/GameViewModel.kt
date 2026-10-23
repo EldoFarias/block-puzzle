@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.farias.prismablocks.R
 import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.audio.SoundManager
+import com.farias.prismablocks.data.MissionType
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.ui.Fx
 import com.farias.prismablocks.ui.Palette
@@ -281,6 +282,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val color = Palette.block(r.color)
         if (!Progress.tutorialDone) Progress.markTutorial(true)
         Progress.recordMove(r.lines, r.combo)
+        missionEvent(MissionType.PIECES, 1)
+        missionEvent(MissionType.LINES, r.lines)
+        missionEvent(MissionType.COMBO, r.combo, asMax = true)
+        missionEvent(MissionType.SCORE, engine.score, asMax = true)
         if (mode == Mode.ADVENTURE) advMoves++
         onGems(r.gems)
 
@@ -374,9 +379,23 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Updates daily missions and celebrates the ones just completed. */
+    private fun missionEvent(type: MissionType, value: Int, asMax: Boolean = false) {
+        val done = Progress.missionEvent(type, value, asMax)
+        if (done.isEmpty()) return
+        val ctx = getApplication<Application>()
+        fx.text(
+            ctx.getString(R.string.mission_done),
+            Offset(gridOrigin.x + cellPx * 4f, gridOrigin.y - cellPx * 0.6f),
+            androidx.compose.ui.graphics.Color(0xFF34D399), big = false, delayMs = 500,
+        )
+        sound.play(Sfx.COIN, 0.8f, 0.9f)
+    }
+
     /** Sparkles for collected gems. */
     private fun onGems(collected: List<Cell>) {
         if (collected.isEmpty()) return
+        missionEvent(MissionType.GEMS, collected.size)
         for (cell in collected) {
             val c = cellCenter(cell.r, cell.c)
             fx.burst(c, GEM_COLOR, cellPx, 12)
@@ -393,6 +412,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         bombMode = false
         advStars = lv.stars(advMoves)
         val first = Progress.completeLevel(lv.number, advStars)
+        missionEvent(MissionType.LEVELS, 1)
         coinsEarned = Adventure.reward(advStars, first)
         Progress.addCoins(coinsEarned)
         countFinish()
@@ -413,6 +433,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (finishCounted) return
         finishCounted = true
         Progress.onGameFinished(engine.score)
+        missionEvent(MissionType.GAMES, 1)
     }
 
     // ------------------------------------------------------------- revive and power-ups
