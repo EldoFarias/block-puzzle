@@ -186,6 +186,7 @@ private fun ThemePreview(theme: GameTheme) {
             .height(120.dp)
             .clip(RoundedCornerShape(16.dp)),
     ) {
+        if (size.width < 2f || size.height < 2f) return@Canvas
         drawRect(Brush.verticalGradient(listOf(theme.bgTop, theme.bgBottom)))
         val glow = size.width * 0.6f
         drawCircle(
