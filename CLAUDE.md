@@ -17,7 +17,7 @@ adb logcat -s PrismaBlocks AndroidRuntime Vibrator VibratorManagerService
 - O APK do CI e o instalado daqui têm assinaturas de debug diferentes: trocar de um para o outro exige desinstalar (perde o progresso).
 - `.github/workflows/screenshots.yml` (manual): abre o app no emulador em 4 tamanhos e publica os prints em Releases → `telas`.
 - Atalhos só no debug: `adb shell am start -n com.farias.prismablocks.debug/com.farias.prismablocks.MainActivity --es screen game`
-  (`home`, `chest`, `game`, `adventure_game`, `map`, `themes`, `stats`; `--ez landscape true`; `--ei level 41` para a fase).
+  (`home`, `chest`, `game`, `adventure_game`, `map`, `themes`, `stats`; `--ez landscape true`; `--ei level 41` para a fase; `continue` retoma a partida salva; `--ez shots true` sem anúncios, para prints).
 
 ## Arquitetura
 

@@ -47,7 +47,8 @@ class MainActivity : ComponentActivity() {
         DailyReminder.createChannel(this)
         DailyReminder.sync(this)
         ads = AdsManager(this)
-        ads.start()
+        // Debug store screenshots (`--ez shots true`) are taken without the test ad banner.
+        if (!(BuildConfig.DEBUG && intent.getBooleanExtra("shots", false))) ads.start()
         val sound = SoundManager.get(this)
         MusicPlayer.init(this)
 
@@ -112,7 +113,8 @@ class MainActivity : ComponentActivity() {
     /**
      * Debug builds only: lets the automated screenshot test open a screen directly, e.g.
      * `adb shell am start -n <pkg>/com.farias.prismablocks.MainActivity --es screen game`
-     * (`--ei level 41` picks the adventure level of `adventure_game`).
+     * (`--ei level 41` picks the adventure level of `adventure_game`; `continue` resumes the saved classic game;
+     * `--ez shots true` skips ads for store screenshots).
      */
     private fun debugStartScreen(): Screen {
         if (!BuildConfig.DEBUG) return Screen.SPLASH
@@ -124,6 +126,10 @@ class MainActivity : ComponentActivity() {
         return when (target) {
             "game" -> {
                 vm.startClassic(continueSaved = false)
+                Screen.GAME
+            }
+            "continue" -> {
+                vm.startClassic(continueSaved = true)
                 Screen.GAME
             }
             "adventure_game" -> {
