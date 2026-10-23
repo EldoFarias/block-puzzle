@@ -405,7 +405,7 @@ private fun ModeCard(
                 contentAlignment = Alignment.Center,
             ) { icon() }
             Column {
-                Text(title, style = Styles.plain(17, Palette.TextPrimary, FontWeight.Black), maxLines = 1)
+                FitText(title, Styles.plain(17, Palette.TextPrimary, FontWeight.Black), minSp = 11f)
                 Text(subtitle, style = Styles.plain(13, Palette.TextSecondary, FontWeight.SemiBold), maxLines = 2)
             }
         }
@@ -483,7 +483,7 @@ private fun HomeTile(
         ) {
             icon()
             Spacer(Modifier.height(6.dp))
-            Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), maxLines = 1)
+            FitText(label, Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), minSp = 9f)
         }
         if (badge > 0) {
             Box(

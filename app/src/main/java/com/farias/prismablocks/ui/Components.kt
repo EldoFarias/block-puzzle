@@ -338,3 +338,39 @@ fun StarIcon(filled: Boolean, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** Single-line text that shrinks its font (down to [minSp]) instead of being cut off on narrow screens. */
+@Composable
+fun FitText(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    minSp: Float = 10f,
+) {
+    val max = if (style.fontSize.isSp) style.fontSize.value else 16f
+    androidx.compose.foundation.text.BasicText(
+        text = text,
+        modifier = modifier,
+        style = style,
+        maxLines = 1,
+        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
+            minFontSize = minSp.sp,
+            maxFontSize = max.sp,
+            stepSize = 0.5.sp,
+        ),
+    )
+}
+
+/** Draws [content] bigger by [scale] (dp and sp), used to enlarge controls on tablets. */
+@Composable
+fun Scaled(scale: Float, content: @Composable () -> Unit) {
+    if (scale == 1f) {
+        content()
+        return
+    }
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale),
+        content = content,
+    )
+}

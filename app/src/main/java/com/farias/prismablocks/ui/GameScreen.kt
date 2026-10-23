@@ -180,7 +180,9 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
                 // Portrait: shrink the fixed parts on short phones, cap the board on tablets.
                 val screenWidth = maxWidth
                 val dims = if (maxHeight < 660.dp) GameDims.compact else GameDims.normal
-                val fixed = dims.topBar + dims.header + dims.gap + dims.powerBar + bannerH + 12.dp
+                // Tablets: header and power-ups drawn 30% bigger so they don't look tiny next to the board.
+                val ui = if (maxWidth >= 600.dp && maxHeight >= 900.dp) 1.3f else 1f
+                val fixed = (dims.topBar + dims.header + dims.powerBar) * ui + dims.gap + bannerH + 12.dp
                 val boardSide = minOf(maxWidth - 24.dp, (maxHeight - fixed) / (1f + dims.trayRatio)).coerceIn(150.dp, 720.dp)
                 Column(
                     modifier = Modifier
@@ -188,14 +190,20 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
                         .graphicsLayer { translationX = vm.fx.shake.floatValue },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    TopBar(vm, dims)
-                    ScoreHeader(vm, dims)
+                    Scaled(ui) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            TopBar(vm, dims)
+                            ScoreHeader(vm, dims)
+                        }
+                    }
                     Spacer(Modifier.weight(1f))
                     Board(vm, boardSide, onBombTap)
                     Spacer(Modifier.height(dims.gap))
                     Tray(vm, boardSide, dims.trayRatio)
                     // Narrow phones show icons + price only.
-                    PowerBar(vm, screenWidth - 16.dp, dims, vertical = false, showLabels = screenWidth >= 392.dp, onUse = onPower)
+                    Scaled(ui) {
+                        PowerBar(vm, (screenWidth - 16.dp) / ui, dims, vertical = false, showLabels = screenWidth >= 392.dp, onUse = onPower)
+                    }
                     Spacer(Modifier.weight(1f))
                     BannerAd(ads)
                 }

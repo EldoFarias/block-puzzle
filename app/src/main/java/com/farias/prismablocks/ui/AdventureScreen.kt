@@ -70,6 +70,15 @@ private fun pathX(level: Int): Float = 0.5f + 0.28f * sin(level * 0.85f)
 
 @Composable
 fun AdventureScreen(onBack: () -> Unit, onPlay: (Int) -> Unit) {
+    // Tablets: draw the whole map 30% bigger so nodes and texts keep a phone-like size on screen.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val scale = if (minOf(maxWidth, maxHeight) >= 600.dp) 1.3f else 1f
+        Scaled(scale) { AdventureContent(onBack, onPlay) }
+    }
+}
+
+@Composable
+private fun AdventureContent(onBack: () -> Unit, onPlay: (Int) -> Unit) {
     BackHandler(onBack = onBack)
     val current = Progress.adventureLevel
     val shown = current + LOCKED_AHEAD
@@ -94,12 +103,11 @@ fun AdventureScreen(onBack: () -> Unit, onPlay: (Int) -> Unit) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Palette.TextPrimary)
                 }
                 Spacer(Modifier.width(12.dp))
-                Text(
+                FitText(
                     stringResource(R.string.adventure),
-                    style = Styles.gradient(24),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    Styles.gradient(24),
                     modifier = Modifier.weight(1f),
+                    minSp = 14f,
                 )
                 Spacer(Modifier.width(8.dp))
                 StarIcon(true, Modifier.size(22.dp))
