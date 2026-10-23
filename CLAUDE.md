@@ -55,6 +55,7 @@ Telas se adaptam: compacto (altura < 660 dp), tablet (escala 1.3 nos controles) 
 1. ~~Vibração no celular do Eldo~~ — **resolvida** (Xiaomi, HyperOS 1.0, API 33). Sem atributos a vibração saía como
    `Usage=TOUCH` e era descartada (`ignored_for_settings`), porque a vibração ao toque está desligada no aparelho.
    `Haptics.kt` agora declara `USAGE_MEDIA` (API 33+) / `USAGE_GAME` (26–32). Diagnóstico: `adb shell dumpsys vibrator_manager`.
-2. Preparar publicação: política de privacidade (GitHub Pages), textos/prints da loja em 8 idiomas,
-   keystore de upload + secrets `KEYSTORE_*`, IDs reais do AdMob nos secrets.
+2. Preparar publicação: política de privacidade (GitHub Pages) + `app-ads.txt`, textos/prints da loja em 8 idiomas,
+   keystore de upload + secrets `KEYSTORE_*`. IDs reais do AdMob já estão nos secrets `ADMOB_*` (2026-10-23;
+   conta `ca-app-pub-1312827233427949`).
 3. Fase 2: login com Google Play Games (salvamento na nuvem, ranking, conquistas).
