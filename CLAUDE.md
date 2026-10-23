@@ -55,7 +55,10 @@ Telas se adaptam: compacto (altura < 660 dp), tablet (escala 1.3 nos controles) 
 1. ~~Vibração no celular do Eldo~~ — **resolvida** (Xiaomi, HyperOS 1.0, API 33). Sem atributos a vibração saía como
    `Usage=TOUCH` e era descartada (`ignored_for_settings`), porque a vibração ao toque está desligada no aparelho.
    `Haptics.kt` agora declara `USAGE_MEDIA` (API 33+) / `USAGE_GAME` (26–32). Diagnóstico: `adb shell dumpsys vibrator_manager`.
-2. Preparar publicação: falta só textos/prints da loja em 8 idiomas e o cadastro no Play Console.
+2. **Publicado em produção (2026-10-23), em revisão do Google**: versão 18 (1.1.0), 177 países, conta pessoal
+   ESF-FARIAS (Play Console `/u/1` no Chrome do Eldo; `/u/0` é outra conta). Falta adicionar as traduções da página da loja
+   (en-US, es-ES, fr-FR, de-DE, tr-TR, id, hi-IN) com textos de `store/listings/` e prints gerados por
+   `store/make_screenshots.py` (cópia em `Desktop/PrismaBlocks-PlayStore/screenshots`). Roteiro em `store/PUBLICAR.md`.
    Já feito (2026-10-23): IDs reais do AdMob nos secrets `ADMOB_*` (conta `ca-app-pub-1312827233427949`);
    keystore de upload (alias `upload`) nos secrets `KEYSTORE_*`, original guardado pelo Eldo fora do repositório;
    política em https://eldofarias.github.io/prisma-blocks/privacy.html (repo `eldofarias.github.io`, link nas

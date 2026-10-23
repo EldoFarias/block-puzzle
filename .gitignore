@@ -11,3 +11,6 @@
 *.jks
 *.keystore
 keystore.properties
+
+# Store screenshots: regenerate with store/make_screenshots.py
+store/screenshots/
