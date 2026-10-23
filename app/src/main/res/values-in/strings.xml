@@ -79,4 +79,18 @@
     <string name="stat_best_streak">Rentetan terbaik</string>
     <string name="stat_coins">Koin</string>
     <string name="near_record">Hanya kurang %1$d poin dari rekormu!</string>
+    <string name="adventure">Petualangan</string>
+    <string name="level_x">Level %1$d</string>
+    <string name="goal_gems">Kumpulkan %1$d permata</string>
+    <string name="goal_lines">Hapus %1$d baris</string>
+    <string name="goal_score">Raih %1$d poin</string>
+    <string name="stars_hint">★★★ dalam %1$d langkah atau kurang</string>
+    <string name="level_complete">LEVEL SELESAI!</string>
+    <string name="next_level">Level berikutnya</string>
+    <string name="map">Peta</string>
+    <string name="left_gems">Kurang %1$d permata lagi!</string>
+    <string name="left_points">Kurang %1$d poin lagi!</string>
+    <string name="gems_progress">Permata %1$d/%2$d</string>
+    <string name="points_progress">Target %1$d</string>
+    <string name="play">Main</string>
 </resources>

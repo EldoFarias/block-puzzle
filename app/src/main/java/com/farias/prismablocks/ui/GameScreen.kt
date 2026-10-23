@@ -75,6 +75,7 @@ import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameEngine
 import com.farias.prismablocks.game.GameViewModel
+import com.farias.prismablocks.game.Goal
 import com.farias.prismablocks.game.Mode
 import com.farias.prismablocks.game.Power
 import kotlinx.coroutines.CancellationException
@@ -99,11 +100,11 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
         }
     }
     // A new record or a won daily is the best moment to ask for a store rating.
-    LaunchedEffect(vm.showGameOverPanel, vm.showDailyWin) {
-        if ((vm.showGameOverPanel && vm.newRecord) || vm.showDailyWin) onGreatMoment()
+    LaunchedEffect(vm.showGameOverPanel, vm.showDailyWin, vm.showAdvWin) {
+        if ((vm.showGameOverPanel && vm.newRecord) || vm.showDailyWin || (vm.showAdvWin && vm.advStars == 3)) onGreatMoment()
     }
     BackHandler(enabled = vm.bombMode) { vm.bombMode = false }
-    BackHandler(enabled = !vm.bombMode && !vm.paused && !vm.showGameOverPanel && !vm.showDailyWin) { vm.paused = true }
+    BackHandler(enabled = !vm.bombMode && !vm.paused && !vm.showGameOverPanel && !vm.showDailyWin && !vm.showAdvWin) { vm.paused = true }
 
     fun pay(p: Power, action: () -> Unit) {
         if (Progress.spend(p.cost)) {
@@ -164,6 +165,12 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
         ) { GameOverOverlay(vm, ads, onHome) }
 
         AnimatedVisibility(
+            visible = vm.showAdvWin,
+            enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = 0.6f)),
+            exit = fadeOut(tween(150)),
+        ) { AdventureWinOverlay(vm, ads, onHome) }
+
+        AnimatedVisibility(
             visible = vm.showDailyWin,
             enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = 0.6f)),
             exit = fadeOut(tween(150)),
@@ -197,12 +204,17 @@ private fun TopBar(vm: GameViewModel) {
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (vm.mode == Mode.CLASSIC) {
-            CrownIcon(Modifier.size(24.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(Progress.best.toString(), style = Styles.glow(20, Palette.Gold))
-        } else {
-            Text(stringResource(R.string.daily_title), style = Styles.glow(18, Palette.Cyan, FontWeight.Black))
+        when (vm.mode) {
+            Mode.CLASSIC -> {
+                CrownIcon(Modifier.size(24.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(Progress.best.toString(), style = Styles.glow(20, Palette.Gold))
+            }
+            Mode.DAILY -> Text(stringResource(R.string.daily_title), style = Styles.glow(18, Palette.Cyan, FontWeight.Black))
+            Mode.ADVENTURE -> Text(
+                stringResource(R.string.level_x, vm.level?.number ?: 1),
+                style = Styles.glow(20, Palette.Magenta, FontWeight.Black),
+            )
         }
         Spacer(Modifier.weight(1f))
         CoinPill(Progress.coins)
@@ -225,8 +237,16 @@ private fun ScoreHeader(vm: GameViewModel) {
     ) {
         Text(shown.toString(), style = Styles.gradient(52))
         Box(Modifier.height(30.dp), contentAlignment = Alignment.Center) {
+            val lv = vm.level
             if (vm.mode == Mode.DAILY) {
-                DailyProgress(vm.lines, vm.dailyTarget)
+                GoalProgress(vm.lines, vm.dailyTarget, stringResource(R.string.lines_progress, vm.lines.coerceAtMost(vm.dailyTarget), vm.dailyTarget))
+            } else if (vm.mode == Mode.ADVENTURE && lv != null) {
+                val label = when (lv.goal) {
+                    Goal.GEMS -> stringResource(R.string.gems_progress, vm.gemsCollected.coerceAtMost(lv.target), lv.target)
+                    Goal.LINES -> stringResource(R.string.lines_progress, vm.lines.coerceAtMost(lv.target), lv.target)
+                    Goal.SCORE -> stringResource(R.string.points_progress, lv.target)
+                }
+                GoalProgress(vm.advProgress, lv.target, label, gem = lv.goal == Goal.GEMS)
             } else if (vm.combo >= 2) {
                 ComboBadge(vm.combo)
             }
@@ -251,9 +271,13 @@ private fun ComboBadge(combo: Int) {
 }
 
 @Composable
-private fun DailyProgress(lines: Int, target: Int) {
-    val progress = (lines.toFloat() / target.coerceAtLeast(1)).coerceIn(0f, 1f)
+private fun GoalProgress(current: Int, target: Int, label: String, gem: Boolean = false) {
+    val progress = (current.toFloat() / target.coerceAtLeast(1)).coerceIn(0f, 1f)
     Row(verticalAlignment = Alignment.CenterVertically) {
+        if (gem) {
+            Canvas(Modifier.size(22.dp)) { drawGemIcon(center, size.width) }
+            Spacer(Modifier.width(6.dp))
+        }
         Box(
             Modifier
                 .width(150.dp)
@@ -270,10 +294,7 @@ private fun DailyProgress(lines: Int, target: Int) {
             )
         }
         Spacer(Modifier.width(10.dp))
-        Text(
-            stringResource(R.string.lines_progress, lines.coerceAtMost(target), target),
-            style = Styles.plain(14, Palette.TextPrimary, FontWeight.Bold),
-        )
+        Text(label, style = Styles.plain(14, Palette.TextPrimary, FontWeight.Bold))
     }
 }
 
@@ -343,6 +364,7 @@ private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
         }
 
         val board = vm.board
+        val gems = vm.gems
         val drag = vm.drag?.takeIf { it.valid }
         val previewColor = drag?.let { Palette.block(it.piece.color) }
         val previewRows = drag?.previewRows ?: emptyList()
@@ -365,6 +387,10 @@ private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
             val pt = if (popStart == 0L) 1f else ((now - popStart) / Fx.POP_NANOS.toFloat()).coerceIn(0f, 1f)
             val scale = if (pt < 1f) 0.6f + 0.4f * easeOutBack(pt) else 1f
             drawGem(tl, cell, color, glow = overT < 0.5f, scale = scale)
+            if (gems[idx]) {
+                val tw = 0.75f + 0.25f * kotlin.math.sin(now / 180_000_000.0 + idx).toFloat()
+                drawGemIcon(Offset(tl.x + cell / 2f, tl.y + cell / 2f), cell * scale, tw, alpha = 1f - overT * 0.5f)
+            }
         }
 
         if (drag != null && previewColor != null) {

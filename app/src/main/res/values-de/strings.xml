@@ -79,4 +79,18 @@
     <string name="stat_best_streak">Längste Serie</string>
     <string name="stat_coins">Münzen</string>
     <string name="near_record">Nur %1$d Punkte bis zu deinem Rekord!</string>
+    <string name="adventure">Abenteuer</string>
+    <string name="level_x">Level %1$d</string>
+    <string name="goal_gems">Sammle %1$d Edelsteine</string>
+    <string name="goal_lines">Räume %1$d Reihen ab</string>
+    <string name="goal_score">Erziele %1$d Punkte</string>
+    <string name="stars_hint">★★★ in höchstens %1$d Zügen</string>
+    <string name="level_complete">LEVEL GESCHAFFT!</string>
+    <string name="next_level">Nächstes Level</string>
+    <string name="map">Karte</string>
+    <string name="left_gems">Noch %1$d Edelsteine!</string>
+    <string name="left_points">Noch %1$d Punkte!</string>
+    <string name="gems_progress">Steine %1$d/%2$d</string>
+    <string name="points_progress">Ziel %1$d</string>
+    <string name="play">Spielen</string>
 </resources>

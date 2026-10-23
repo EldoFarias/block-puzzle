@@ -297,3 +297,30 @@ fun GlassPanel(content: @Composable androidx.compose.foundation.layout.ColumnSco
         content = content,
     )
 }
+
+/** Five-pointed star: gold when earned, dim glass when not. */
+@Composable
+fun StarIcon(filled: Boolean, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val outer = size.minDimension / 2f
+        val inner = outer * 0.48f
+        val path = Path()
+        for (i in 0 until 10) {
+            val r = if (i % 2 == 0) outer else inner
+            val a = Math.PI / 2 + i * Math.PI / 5
+            val x = cx + (r * kotlin.math.cos(a)).toFloat()
+            val y = cy - (r * kotlin.math.sin(a)).toFloat()
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        if (filled) {
+            drawPath(path, Brush.verticalGradient(listOf(Color(0xFFFFF3B0), Palette.Gold, Color(0xFFD97706))))
+            drawPath(path, Color(0xFF92400E).copy(alpha = 0.6f), style = androidx.compose.ui.graphics.drawscope.Stroke(outer * 0.07f))
+        } else {
+            drawPath(path, Color(0x33FFFFFF))
+            drawPath(path, Color(0x55FFFFFF), style = androidx.compose.ui.graphics.drawscope.Stroke(outer * 0.06f))
+        }
+    }
+}

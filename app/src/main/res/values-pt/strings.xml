@@ -79,4 +79,18 @@
     <string name="stat_best_streak">Melhor sequência</string>
     <string name="stat_coins">Moedas</string>
     <string name="near_record">Faltaram só %1$d pontos para o recorde!</string>
+    <string name="adventure">Aventura</string>
+    <string name="level_x">Fase %1$d</string>
+    <string name="goal_gems">Colete %1$d gemas</string>
+    <string name="goal_lines">Limpe %1$d linhas</string>
+    <string name="goal_score">Faça %1$d pontos</string>
+    <string name="stars_hint">★★★ em até %1$d jogadas</string>
+    <string name="level_complete">FASE CONCLUÍDA!</string>
+    <string name="next_level">Próxima fase</string>
+    <string name="map">Mapa</string>
+    <string name="left_gems">Faltaram %1$d gemas!</string>
+    <string name="left_points">Faltaram %1$d pontos!</string>
+    <string name="gems_progress">Gemas %1$d/%2$d</string>
+    <string name="points_progress">Meta %1$d</string>
+    <string name="play">Jogar</string>
 </resources>

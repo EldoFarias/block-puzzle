@@ -59,6 +59,14 @@ object Progress {
     var lastReviewAsk by mutableStateOf(0L)
         private set
 
+    // Adventure
+    /** Highest level the player can play. */
+    var adventureLevel by mutableIntStateOf(1)
+        private set
+    /** Best stars per finished level. */
+    var levelStars by mutableStateOf(mapOf<Int, Int>())
+        private set
+
     val isReady: Boolean get() = ::prefs.isInitialized
 
     fun init(context: Context) {
@@ -83,6 +91,11 @@ object Progress {
         dailiesDone = prefs.getInt("dailies_done", 0)
         bestStreak = prefs.getInt("best_streak", 0)
         lastReviewAsk = prefs.getLong("last_review_ask", 0L)
+        adventureLevel = prefs.getInt("adventure_level", 1)
+        levelStars = (prefs.getString("level_stars", "") ?: "").split(",").mapNotNull { e ->
+            val p = e.split(":")
+            if (p.size == 2) p[0].toIntOrNull()?.let { k -> p[1].toIntOrNull()?.let { v -> k to v } } else null
+        }.toMap()
     }
 
     // ------------------------------------------------------------------ coins
@@ -180,6 +193,24 @@ object Progress {
         if (!owns(id)) return
         themeId = id
         prefs.edit().putString("theme", id).apply()
+    }
+
+    // ------------------------------------------------------------------ adventure
+
+    val totalStars: Int get() = levelStars.values.sum()
+
+    fun starsFor(level: Int): Int = levelStars[level] ?: 0
+
+    /** Saves the result of a level and unlocks the next one. Returns true the first time it's beaten. */
+    fun completeLevel(level: Int, stars: Int): Boolean {
+        val firstTime = level !in levelStars
+        if (stars > starsFor(level)) levelStars = levelStars + (level to stars)
+        if (level >= adventureLevel) adventureLevel = level + 1
+        prefs.edit()
+            .putInt("adventure_level", adventureLevel)
+            .putString("level_stars", levelStars.entries.joinToString(",") { "${it.key}:${it.value}" })
+            .apply()
+        return firstTime
     }
 
     // ------------------------------------------------------------------ daily challenge

@@ -80,4 +80,18 @@
     <string name="stat_best_streak">Best streak</string>
     <string name="stat_coins">Coins</string>
     <string name="near_record">Only %1$d points from your record!</string>
+    <string name="adventure">Adventure</string>
+    <string name="level_x">Level %1$d</string>
+    <string name="goal_gems">Collect %1$d gems</string>
+    <string name="goal_lines">Clear %1$d lines</string>
+    <string name="goal_score">Score %1$d points</string>
+    <string name="stars_hint">★★★ in %1$d moves or fewer</string>
+    <string name="level_complete">LEVEL COMPLETE!</string>
+    <string name="next_level">Next level</string>
+    <string name="map">Map</string>
+    <string name="left_gems">%1$d gems to go!</string>
+    <string name="left_points">%1$d points to go!</string>
+    <string name="gems_progress">Gems %1$d/%2$d</string>
+    <string name="points_progress">Goal %1$d</string>
+    <string name="play">Play</string>
 </resources>

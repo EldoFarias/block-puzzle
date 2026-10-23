@@ -79,4 +79,18 @@
     <string name="stat_best_streak">Meilleure série</string>
     <string name="stat_coins">Pièces</string>
     <string name="near_record">Plus que %1$d points pour battre votre record !</string>
+    <string name="adventure">Aventure</string>
+    <string name="level_x">Niveau %1$d</string>
+    <string name="goal_gems">Récoltez %1$d gemmes</string>
+    <string name="goal_lines">Effacez %1$d lignes</string>
+    <string name="goal_score">Marquez %1$d points</string>
+    <string name="stars_hint">★★★ en %1$d coups maximum</string>
+    <string name="level_complete">NIVEAU RÉUSSI !</string>
+    <string name="next_level">Niveau suivant</string>
+    <string name="map">Carte</string>
+    <string name="left_gems">Encore %1$d gemmes !</string>
+    <string name="left_points">Encore %1$d points !</string>
+    <string name="gems_progress">Gemmes %1$d/%2$d</string>
+    <string name="points_progress">Objectif %1$d</string>
+    <string name="play">Jouer</string>
 </resources>

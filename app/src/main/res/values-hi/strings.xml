@@ -79,4 +79,18 @@
     <string name="stat_best_streak">सबसे लंबी स्ट्रीक</string>
     <string name="stat_coins">सिक्के</string>
     <string name="near_record">रिकॉर्ड से बस %1$d अंक दूर!</string>
+    <string name="adventure">एडवेंचर</string>
+    <string name="level_x">लेवल %1$d</string>
+    <string name="goal_gems">%1$d रत्न इकट्ठा करें</string>
+    <string name="goal_lines">%1$d लाइनें साफ़ करें</string>
+    <string name="goal_score">%1$d अंक बनाएँ</string>
+    <string name="stars_hint">★★★ ज़्यादा से ज़्यादा %1$d चालों में</string>
+    <string name="level_complete">लेवल पूरा!</string>
+    <string name="next_level">अगला लेवल</string>
+    <string name="map">मैप</string>
+    <string name="left_gems">%1$d रत्न बाकी थे!</string>
+    <string name="left_points">%1$d अंक बाकी थे!</string>
+    <string name="gems_progress">रत्न %1$d/%2$d</string>
+    <string name="points_progress">लक्ष्य %1$d</string>
+    <string name="play">खेलें</string>
 </resources>

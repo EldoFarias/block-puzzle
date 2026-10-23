@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -30,6 +31,7 @@ import com.farias.prismablocks.R
 import com.farias.prismablocks.ads.AdsManager
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameViewModel
+import com.farias.prismablocks.game.Goal
 import com.farias.prismablocks.game.Mode
 import com.farias.prismablocks.game.Power
 import com.google.android.gms.ads.AdRequest
@@ -114,9 +116,27 @@ private fun CoinsEarned(amount: Int) {
 @Composable
 fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
     val daily = vm.mode == Mode.DAILY
+    val lv = vm.level
+    val adventure = vm.mode == Mode.ADVENTURE && lv != null
     DimOverlay {
         GlassPanel {
             when {
+                adventure && lv != null -> {
+                    val left = (lv.target - vm.advProgress).coerceAtLeast(1)
+                    Text(stringResource(R.string.level_x, lv.number), style = Styles.plain(16, Palette.TextSecondary, FontWeight.Bold))
+                    Text(
+                        stringResource(
+                            when (lv.goal) {
+                                Goal.GEMS -> R.string.left_gems
+                                Goal.LINES -> R.string.daily_fail
+                                Goal.SCORE -> R.string.left_points
+                            },
+                            left,
+                        ),
+                        style = Styles.plain(24, Palette.TextPrimary, FontWeight.Black),
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 daily -> Text(
                     stringResource(R.string.daily_fail, (vm.dailyTarget - vm.lines).coerceAtLeast(1)),
                     style = Styles.plain(24, Palette.TextPrimary, FontWeight.Black),
@@ -127,7 +147,9 @@ fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
             }
             Text(stringResource(R.string.score), style = Styles.plain(14, Palette.TextSecondary))
             Text(vm.score.toString(), style = Styles.gradient(60))
-            if (daily) {
+            if (adventure) {
+                Spacer(Modifier.height(0.dp))
+            } else if (daily) {
                 Text(
                     stringResource(R.string.lines_progress, vm.lines, vm.dailyTarget),
                     style = Styles.plain(17, Palette.Cyan, FontWeight.Bold),
@@ -157,10 +179,10 @@ fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
                     ads.showRewarded { vm.revive() }
                 }
             }
-            SecondaryButton(stringResource(if (daily) R.string.try_again else R.string.play_again)) {
+            SecondaryButton(stringResource(if (daily || adventure) R.string.try_again else R.string.play_again)) {
                 ads.onNewGame { vm.restart() }
             }
-            SecondaryButton(stringResource(R.string.home)) { onHome() }
+            SecondaryButton(stringResource(if (adventure) R.string.map else R.string.home)) { onHome() }
         }
     }
 }
@@ -261,6 +283,59 @@ fun BannerAd(ads: AdsManager) {
                     onRelease = { it.destroy() },
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AdventureWinOverlay(vm: GameViewModel, ads: AdsManager, onMap: () -> Unit) {
+    val lv = vm.level ?: return
+    DimOverlay {
+        GlassPanel {
+            Text(stringResource(R.string.level_x, lv.number), style = Styles.plain(16, Palette.TextSecondary, FontWeight.Bold))
+            Text(
+                stringResource(R.string.level_complete),
+                style = Styles.glow(28, Palette.Gold, FontWeight.Black),
+                textAlign = TextAlign.Center,
+            )
+            StarsReveal(vm.advStars, vm)
+            Text(vm.score.toString(), style = Styles.gradient(44))
+            CoinsEarned(vm.coinsEarned)
+            Spacer(Modifier.height(8.dp))
+            PrimaryButton(stringResource(R.string.next_level)) {
+                ads.onNewGame { vm.startAdventure(lv.number + 1) }
+            }
+            SecondaryButton(stringResource(R.string.map)) { onMap() }
+        }
+    }
+}
+
+/** Three stars that pop in one after another, with a chime for each earned star. */
+@Composable
+private fun StarsReveal(stars: Int, vm: GameViewModel) {
+    val anims = remember { List(3) { androidx.compose.animation.core.Animatable(0f) } }
+    androidx.compose.runtime.LaunchedEffect(stars) {
+        for (i in 0 until 3) {
+            kotlinx.coroutines.delay(260)
+            if (i < stars) vm.sound.play(com.farias.prismablocks.audio.Sfx.COIN, 1f, 1f + i * 0.15f)
+            anims[i].animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 400f))
+        }
+    }
+    Row(verticalAlignment = Alignment.Bottom) {
+        for (i in 0 until 3) {
+            val big = i == 1
+            StarIcon(
+                filled = i < stars,
+                modifier = Modifier
+                    .padding(horizontal = 6.dp)
+                    .size(if (big) 64.dp else 50.dp)
+                    .graphicsLayer {
+                        val v = anims[i].value
+                        scaleX = v
+                        scaleY = v
+                        rotationZ = (1f - v) * -40f
+                    },
+            )
         }
     }
 }

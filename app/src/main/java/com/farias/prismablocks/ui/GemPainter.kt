@@ -131,3 +131,47 @@ fun DrawScope.drawShape(
         drawGem(Offset(topLeft.x + c.c * cell, topLeft.y + c.r * cell), cell, color, alpha, glow)
     }
 }
+
+/** A faceted diamond drawn on top of a block that holds a collectible gem (adventure mode). */
+fun DrawScope.drawGemIcon(center: Offset, size: Float, twinkle: Float = 1f, alpha: Float = 1f) {
+    if (size < 2f || alpha <= 0.01f) return
+    val w = size * 0.62f
+    val h = size * 0.56f
+    val top = center.y - h * 0.48f
+    val girdle = center.y - h * 0.12f
+    val bottom = center.y + h * 0.52f
+    val left = center.x - w / 2f
+    val right = center.x + w / 2f
+    // glow
+    drawCircle(
+        brush = Brush.radialGradient(
+            listOf(Color(0xFF67E8F9).copy(alpha = 0.55f * alpha * twinkle), Color.Transparent),
+            center = center, radius = size * 0.6f,
+        ),
+        radius = size * 0.6f, center = center,
+    )
+    val crown = androidx.compose.ui.graphics.Path().apply {
+        moveTo(left + w * 0.22f, top)
+        lineTo(right - w * 0.22f, top)
+        lineTo(right, girdle)
+        lineTo(left, girdle)
+        close()
+    }
+    val pavilion = androidx.compose.ui.graphics.Path().apply {
+        moveTo(left, girdle)
+        lineTo(right, girdle)
+        lineTo(center.x, bottom)
+        close()
+    }
+    drawPath(crown, Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFA5F3FC)), top, girdle), alpha = alpha)
+    drawPath(pavilion, Brush.verticalGradient(listOf(Color(0xFF67E8F9), Color(0xFF0E7490)), girdle, bottom), alpha = alpha)
+    val edge = Stroke(width = size * 0.035f)
+    drawPath(crown, Color(0xFF0E7490).copy(alpha = 0.8f), alpha = alpha, style = edge)
+    drawPath(pavilion, Color(0xFF0E7490).copy(alpha = 0.8f), alpha = alpha, style = edge)
+    drawLine(Color(0xFF0E7490).copy(alpha = 0.5f * alpha), Offset(center.x, girdle), Offset(center.x, bottom), size * 0.025f)
+    // sparkle
+    val s = size * 0.12f * twinkle
+    val sp = Offset(left + w * 0.3f, top + (girdle - top) * 0.45f)
+    drawLine(Color.White.copy(alpha = alpha), Offset(sp.x - s, sp.y), Offset(sp.x + s, sp.y), size * 0.03f)
+    drawLine(Color.White.copy(alpha = alpha), Offset(sp.x, sp.y - s), Offset(sp.x, sp.y + s), size * 0.03f)
+}

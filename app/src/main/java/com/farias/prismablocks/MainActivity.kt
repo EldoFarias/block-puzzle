@@ -18,14 +18,16 @@ import com.farias.prismablocks.audio.MusicPlayer
 import com.farias.prismablocks.audio.SoundManager
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameViewModel
+import com.farias.prismablocks.game.Mode
 import com.farias.prismablocks.notify.DailyReminder
+import com.farias.prismablocks.ui.AdventureScreen
 import com.farias.prismablocks.ui.GameScreen
 import com.farias.prismablocks.ui.HomeScreen
 import com.farias.prismablocks.ui.SplashScreen
 import com.farias.prismablocks.ui.StatsScreen
 import com.farias.prismablocks.ui.ThemesScreen
 
-enum class Screen { SPLASH, HOME, GAME, THEMES, STATS }
+enum class Screen { SPLASH, HOME, GAME, THEMES, STATS, ADVENTURE }
 
 class MainActivity : ComponentActivity() {
 
@@ -75,6 +77,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onThemes = { screen = Screen.THEMES },
                         onStats = { screen = Screen.STATS },
+                        onAdventure = { screen = Screen.ADVENTURE },
                     )
                     Screen.GAME -> GameScreen(
                         vm = vm,
@@ -82,11 +85,20 @@ class MainActivity : ComponentActivity() {
                         onGreatMoment = { ReviewPrompt.maybeAsk(this@MainActivity) },
                         onHome = {
                             vm.save()
-                            screen = Screen.HOME
+                            screen = if (vm.mode == Mode.ADVENTURE) Screen.ADVENTURE else Screen.HOME
                         },
                     )
                     Screen.THEMES -> ThemesScreen(sound) { screen = Screen.HOME }
                     Screen.STATS -> StatsScreen { screen = Screen.HOME }
+                    Screen.ADVENTURE -> AdventureScreen(
+                        onBack = { screen = Screen.HOME },
+                        onPlay = { number ->
+                            ads.onNewGame {
+                                vm.startAdventure(number)
+                                screen = Screen.GAME
+                            }
+                        },
+                    )
                 }
             }
         }

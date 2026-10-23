@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 
 enum class Haptic { TICK, PLACE, CLEAR, HEAVY }
 
-enum class Mode { CLASSIC, DAILY }
+enum class Mode { CLASSIC, DAILY, ADVENTURE }
 
 enum class Power(val cost: Int) { UNDO(30), BOMB(50), SHUFFLE(40) }
 
@@ -97,8 +97,33 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private var dailyDay = 0
 
-    /** No more moves for this game (lost, or the daily goal was reached). */
-    val finished: Boolean get() = gameOver || dailyWon
+    // Adventure
+    var level by mutableStateOf<Level?>(null)
+        private set
+    var advMoves by mutableIntStateOf(0)
+        private set
+    var gems by mutableStateOf(BooleanArray(GameEngine.N * GameEngine.N))
+        private set
+    var gemsCollected by mutableIntStateOf(0)
+        private set
+    var advWon by mutableStateOf(false)
+        private set
+    var showAdvWin by mutableStateOf(false)
+        private set
+    var advStars by mutableIntStateOf(0)
+        private set
+
+    /** Progress towards the adventure goal (gems, lines or points). */
+    val advProgress: Int
+        get() = when (level?.goal) {
+            Goal.GEMS -> gemsCollected
+            Goal.LINES -> lines
+            Goal.SCORE -> score
+            null -> 0
+        }
+
+    /** No more moves for this game (lost, or the goal was reached). */
+    val finished: Boolean get() = gameOver || dailyWon || advWon
 
     // ------------------------------------------------------------- geometry (root px), set by the UI
     var gridOrigin = Offset.Zero
@@ -137,11 +162,27 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         sync()
     }
 
+    fun startAdventure(number: Int) {
+        resetSession(Mode.ADVENTURE)
+        level = Adventure.level(number)
+        newAdventureGame()
+        sync()
+    }
+
+    private fun newAdventureGame() {
+        val lv = level ?: return
+        advMoves = 0
+        engine.helpChance = lv.helpChance
+        engine.newGame(seed = lv.seed, prefill = lv.prefill, gemCount = lv.gems, gemEase = lv.gemEase)
+    }
+
     /** "Play again" / "Try again": a fresh game in the current mode. */
     fun restart() {
         resetSession(mode)
         if (mode == Mode.DAILY) {
             newDailyGame()
+        } else if (mode == Mode.ADVENTURE) {
+            newAdventureGame()
         } else {
             engine.newGame()
             Progress.remove(KEY_SAVE)
@@ -162,6 +203,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         showGameOverPanel = false
         showDailyWin = false
         dailyWon = false
+        showAdvWin = false
+        advWon = false
+        advMoves = 0
+        if (newMode != Mode.ADVENTURE) level = null
+        engine.helpChance = 0.65f
         newRecord = false
         paused = false
         bombMode = false
@@ -235,6 +281,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val color = Palette.block(r.color)
         if (!Progress.tutorialDone) Progress.markTutorial(true)
         Progress.recordMove(r.lines, r.combo)
+        if (mode == Mode.ADVENTURE) advMoves++
+        onGems(r.gems)
 
         for (cell in r.placed) fx.pop(cell.r * GameEngine.N + cell.c)
 
@@ -277,6 +325,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         sync()
+        if (checkAdventureWin()) return
         if (r.gameOver) onGameOver()
     }
 
@@ -284,7 +333,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         gameOverAt = fx.now
         sound.play(Sfx.GAME_OVER, 0.9f)
         vibrate(Haptic.HEAVY)
-        Progress.remove(if (mode == Mode.DAILY) KEY_DAILY else KEY_SAVE)
+        when (mode) {
+            Mode.DAILY -> Progress.remove(KEY_DAILY)
+            Mode.CLASSIC -> Progress.remove(KEY_SAVE)
+            Mode.ADVENTURE -> Unit
+        }
         if (mode == Mode.CLASSIC) {
             val total = engine.score / COIN_DIVISOR
             val add = (total - coinsAwardedThisGame).coerceAtLeast(0)
@@ -321,6 +374,41 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Sparkles for collected gems. */
+    private fun onGems(collected: List<Cell>) {
+        if (collected.isEmpty()) return
+        for (cell in collected) {
+            val c = cellCenter(cell.r, cell.c)
+            fx.burst(c, GEM_COLOR, cellPx, 12)
+            fx.burst(c, androidx.compose.ui.graphics.Color.White, cellPx * 0.7f, 6)
+        }
+        sound.play(Sfx.COIN, 0.9f, 1.25f)
+    }
+
+    /** Ends an adventure level if its goal was reached. */
+    private fun checkAdventureWin(): Boolean {
+        val lv = level ?: return false
+        if (mode != Mode.ADVENTURE || advWon || advProgress < lv.target) return false
+        advWon = true
+        bombMode = false
+        advStars = lv.stars(advMoves)
+        val first = Progress.completeLevel(lv.number, advStars)
+        coinsEarned = Adventure.reward(advStars, first)
+        Progress.addCoins(coinsEarned)
+        countFinish()
+        val ctx = getApplication<Application>()
+        fx.text(ctx.getString(R.string.level_complete), Offset(gridOrigin.x + cellPx * 4f, gridOrigin.y + cellPx * 3f), Palette.Gold, big = true, delayMs = 150)
+        fx.shake(cellPx * 0.2f)
+        sound.play(Sfx.RECORD)
+        vibrate(Haptic.HEAVY)
+        panelJob?.cancel()
+        panelJob = viewModelScope.launch {
+            delay(1200)
+            showAdvWin = true
+        }
+        return true
+    }
+
     private fun countFinish() {
         if (finishCounted) return
         finishCounted = true
@@ -341,7 +429,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         sound.play(Sfx.REVIVE)
         vibrate(Haptic.CLEAR)
+        onGems(r.gems)
         sync()
+        if (checkAdventureWin()) return
         if (r.gameOver) onGameOver()
     }
 
@@ -356,6 +446,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun undo() {
         if (!engine.undo()) return
+        if (advMoves > 0) advMoves--
         sound.play(Sfx.WHOOSH, 0.8f, 0.9f)
         vibrate(Haptic.PLACE)
         fx.pops.fill(0L)
@@ -398,7 +489,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         fx.shake(cellPx * 0.3f)
         sound.play(Sfx.BOMB)
         vibrate(Haptic.HEAVY)
+        onGems(res.gems)
         sync()
+        if (checkAdventureWin()) return
         if (res.gameOver) onGameOver()
     }
 
@@ -435,6 +528,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         when (mode) {
             Mode.CLASSIC -> Progress.saveString(KEY_SAVE, engine.serialize())
             Mode.DAILY -> Progress.saveString(KEY_DAILY, "$dailyDay|${engine.serialize()}")
+            Mode.ADVENTURE -> Unit // levels are short; they restart if the app is closed
         }
     }
 
@@ -448,6 +542,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         gameOver = engine.gameOver
         revived = engine.revived
         canUndo = engine.canUndo
+        gems = engine.gems.copyOf()
+        gemsCollected = engine.gemsCollected
         if (mode == Mode.CLASSIC) Progress.submitScore(engine.score)
         save()
     }
@@ -473,6 +569,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         const val KEY_DAILY = "daily_save"
         const val COIN_DIVISOR = 40
         const val DAILY_REWARD = 60
+        val GEM_COLOR = androidx.compose.ui.graphics.Color(0xFF67E8F9)
 
         /** Lines to clear in the daily challenge of [day] (yyyyMMdd): 10 to 14. */
         fun dailyTargetFor(day: Int): Int = 10 + day % 5

@@ -16,6 +16,8 @@ data class MoveResult(
     val boardCleared: Boolean,
     val gameOver: Boolean,
     val trayRefilled: Boolean,
+    /** Gems collected by this move (adventure mode). */
+    val gems: List<Cell> = emptyList(),
 ) {
     val lines: Int get() = clearedRows.size + clearedCols.size
     val totalPoints: Int get() = placePoints + linePoints
@@ -34,6 +36,7 @@ class GameEngine(private var rng: Random = Random.Default) {
         const val BOARD_CLEAR_BONUS = 600
         private const val SAVE_V1 = "v1"
         private const val SAVE_V2 = "v2"
+        private const val SAVE_V3 = "v3"
     }
 
     var board = IntArray(N * N)
@@ -52,6 +55,13 @@ class GameEngine(private var rng: Random = Random.Default) {
     /** Total rows + columns cleared this game (daily challenge goal). */
     var linesCleared = 0
         private set
+    /** Cells holding a gem (adventure mode). A gem is collected when its block is cleared. */
+    var gems = BooleanArray(N * N)
+        private set
+    var gemsCollected = 0
+        private set
+    var gemsTotal = 0
+        private set
 
     /** State before the last placement, for the "undo" power-up (one level). */
     private var undoSnapshot: String? = null
@@ -68,7 +78,7 @@ class GameEngine(private var rng: Random = Random.Default) {
      * Starts a new game. With a [seed] the whole game (pre-filled board and pieces) is
      * deterministic, so every player gets the same daily challenge.
      */
-    fun newGame(seed: Long? = null, prefill: Int = 0) {
+    fun newGame(seed: Long? = null, prefill: Int = 0, gemCount: Int = 0, gemEase: Float = 0f) {
         rng = if (seed != null) Random(seed) else Random.Default
         board = IntArray(N * N)
         score = 0
@@ -77,9 +87,13 @@ class GameEngine(private var rng: Random = Random.Default) {
         revived = false
         gameOver = false
         linesCleared = 0
+        gems = BooleanArray(N * N)
+        gemsCollected = 0
+        gemsTotal = 0
         undoSnapshot = null
         for (i in tray.indices) tray[i] = null
-        if (prefill > 0) prefillBoard(prefill)
+        if (prefill > 0) prefillBoard(maxOf(prefill, gemCount))
+        if (gemCount > 0) placeGems(gemCount, gemEase)
         generateTray()
         gameOver = !anyFits()
     }
@@ -130,6 +144,7 @@ class GameEngine(private var rng: Random = Random.Default) {
         for (row in rows) for (col in 0 until N) clearedIdx.add(row * N + col)
         for (col in cols) for (row in 0 until N) clearedIdx.add(row * N + col)
         val clearedCells = clearedIdx.map { Cell(it / N, it % N) to board[it] }
+        val collected = collectGems(clearedIdx)
         for (i in clearedIdx) board[i] = 0
 
         val lines = rows.size + cols.size
@@ -171,7 +186,41 @@ class GameEngine(private var rng: Random = Random.Default) {
             boardCleared = boardCleared,
             gameOver = gameOver,
             trayRefilled = refilled,
+            gems = collected,
         )
+    }
+
+    /** Collects the gems sitting on [indices] (cells about to be cleared). */
+    private fun collectGems(indices: Collection<Int>): List<Cell> {
+        val out = ArrayList<Cell>()
+        for (i in indices) if (gems[i]) {
+            gems[i] = false
+            gemsCollected++
+            out.add(Cell(i / N, i % N))
+        }
+        return out
+    }
+
+    /**
+     * Puts [count] gems on occupied cells, spread over different rows when possible.
+     * With a higher [ease] gems prefer cells on fuller lines, which are quicker to clear.
+     */
+    private fun placeGems(count: Int, ease: Float) {
+        var filled = (0 until N * N).filter { board[it] != 0 }.shuffled(rng)
+        if (rng.nextFloat() < ease) {
+            filled = filled.sortedByDescending { i ->
+                val r = i / N
+                val c = i % N
+                maxOf((0 until N).count { board[r * N + it] != 0 }, (0 until N).count { board[it * N + c] != 0 })
+            }
+        }
+        val usedRows = HashSet<Int>()
+        val picks = ArrayList<Int>()
+        // First pass: one gem per row, then fill up the rest.
+        for (i in filled) if (picks.size < count && usedRows.add(i / N)) picks.add(i)
+        for (i in filled) if (picks.size < count && i !in picks) picks.add(i)
+        for (i in picks) gems[i] = true
+        gemsTotal = picks.size
     }
 
     /** Reverts the last placement. Returns false if there is nothing to undo. */
@@ -191,16 +240,18 @@ class GameEngine(private var rng: Random = Random.Default) {
             val i = rr * N + cc
             if (board[i] != 0) {
                 cleared.add(Cell(rr, cc) to board[i])
-                board[i] = 0
             }
         }
         if (cleared.isEmpty()) return null
+        val idx = cleared.map { it.first.r * N + it.first.c }
+        val collected = collectGems(idx)
+        for (i in idx) board[i] = 0
         undoSnapshot = null
         gameOver = !anyFits()
         return MoveResult(
             placed = emptyList(), color = 0, clearedRows = emptyList(), clearedCols = emptyList(),
             clearedCells = cleared, placePoints = 0, linePoints = 0, combo = combo,
-            boardCleared = false, gameOver = gameOver, trayRefilled = false,
+            boardCleared = false, gameOver = gameOver, trayRefilled = false, gems = collected,
         )
     }
 
@@ -224,11 +275,14 @@ class GameEngine(private var rng: Random = Random.Default) {
             (0 until N).count { col -> board[row * N + col] != 0 } * 10 + rng.nextInt(10)
         }.take(3).sorted()
         val cleared = ArrayList<Pair<Cell, Int>>()
+        val idx = ArrayList<Int>()
         for (row in rowsByFill) for (col in 0 until N) {
             val i = row * N + col
             if (board[i] != 0) cleared.add(Cell(row, col) to board[i])
-            board[i] = 0
+            idx.add(i)
         }
+        val collected = collectGems(idx)
+        for (i in idx) board[i] = 0
         if (!anyFits()) {
             for (i in tray.indices) tray[i] = null
             generateTray()
@@ -237,7 +291,7 @@ class GameEngine(private var rng: Random = Random.Default) {
         return MoveResult(
             placed = emptyList(), color = 0, clearedRows = rowsByFill, clearedCols = emptyList(),
             clearedCells = cleared, placePoints = 0, linePoints = 0, combo = combo,
-            boardCleared = false, gameOver = gameOver, trayRefilled = true,
+            boardCleared = false, gameOver = gameOver, trayRefilled = true, gems = collected,
         )
     }
 
@@ -372,9 +426,10 @@ class GameEngine(private var rng: Random = Random.Default) {
 
     fun serialize(): String {
         val trayStr = tray.joinToString(",") { p -> if (p == null) "-" else "${p.shape.id}:${p.color}" }
+        val gemStr = gems.joinToString("") { if (it) "1" else "0" }
         return listOf(
-            SAVE_V2, score, combo, movesSinceClear, if (revived) 1 else 0,
-            board.joinToString(""), trayStr, linesCleared,
+            SAVE_V3, score, combo, movesSinceClear, if (revived) 1 else 0,
+            board.joinToString(""), trayStr, linesCleared, gemStr, gemsCollected, gemsTotal,
         ).joinToString(";")
     }
 
@@ -383,7 +438,13 @@ class GameEngine(private var rng: Random = Random.Default) {
         if (data.isNullOrBlank()) return false
         return try {
             val parts = data.split(";")
-            require((parts.size == 7 && parts[0] == SAVE_V1) || (parts.size == 8 && parts[0] == SAVE_V2))
+            require(
+                (parts.size == 7 && parts[0] == SAVE_V1) ||
+                    (parts.size == 8 && parts[0] == SAVE_V2) ||
+                    (parts.size == 11 && parts[0] == SAVE_V3)
+            )
+            val g = if (parts.size == 11) parts[8].map { it == '1' }.toBooleanArray() else BooleanArray(N * N)
+            require(g.size == N * N)
             val b = parts[5].map { it.digitToInt() }.toIntArray()
             require(b.size == N * N && b.all { it in 0..COLORS })
             val t = parts[6].split(",").map { token ->
@@ -398,7 +459,10 @@ class GameEngine(private var rng: Random = Random.Default) {
             combo = parts[2].toInt()
             movesSinceClear = parts[3].toInt()
             revived = parts[4] == "1"
-            linesCleared = if (parts.size == 8) parts[7].toInt() else 0
+            linesCleared = if (parts.size >= 8) parts[7].toInt() else 0
+            gems = g
+            gemsCollected = if (parts.size == 11) parts[9].toInt() else 0
+            gemsTotal = if (parts.size == 11) parts[10].toInt() else 0
             undoSnapshot = null
             for (i in 0 until 3) tray[i] = t[i]
             if (tray.all { it == null }) generateTray()

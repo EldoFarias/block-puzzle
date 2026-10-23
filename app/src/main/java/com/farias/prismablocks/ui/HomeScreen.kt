@@ -74,6 +74,7 @@ fun HomeScreen(
     onDaily: () -> Unit,
     onThemes: () -> Unit,
     onStats: () -> Unit,
+    onAdventure: () -> Unit,
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
@@ -172,7 +173,10 @@ fun HomeScreen(
                     Spacer(Modifier.height(16.dp))
                 }
                 Spacer(Modifier.height(8.dp))
-                DailyCard(onDaily)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AdventureCard(Modifier.weight(1f), onAdventure)
+                    DailyCard(Modifier.weight(1f), onDaily)
+                }
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     HomeTile(stringResource(R.string.themes), Modifier.weight(1f), onThemes) {
@@ -274,46 +278,83 @@ private fun PlayButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DailyCard(onDaily: () -> Unit) {
+private fun ModeCard(
+    modifier: Modifier,
+    title: String,
+    subtitle: String,
+    colors: List<Color>,
+    enabled: Boolean = true,
+    badge: String? = null,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier = modifier
+            .height(118.dp)
+            .clip(shape)
+            .background(Brush.linearGradient(colors.map { it.copy(alpha = 0.28f) }))
+            .border(1.5.dp, Brush.linearGradient(colors), shape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(12.dp),
+    ) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0x33FFFFFF)),
+                contentAlignment = Alignment.Center,
+            ) { icon() }
+            Column {
+                Text(title, style = Styles.plain(17, Palette.TextPrimary, FontWeight.Black), maxLines = 1)
+                Text(subtitle, style = Styles.plain(13, Palette.TextSecondary, FontWeight.SemiBold), maxLines = 2)
+            }
+        }
+        if (badge != null) {
+            Text(
+                badge,
+                style = Styles.glow(16, Color(0xFFFB923C), FontWeight.Black),
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdventureCard(modifier: Modifier, onClick: () -> Unit) {
+    ModeCard(
+        modifier = modifier,
+        title = stringResource(R.string.adventure),
+        subtitle = stringResource(R.string.level_x, Progress.adventureLevel),
+        colors = listOf(Color(0xFFE879F9), Color(0xFF8B5CF6)),
+        badge = if (Progress.totalStars > 0) "★ ${Progress.totalStars}" else null,
+        onClick = onClick,
+    ) {
+        Canvas(Modifier.size(28.dp)) { drawGemIcon(center, size.width) }
+    }
+}
+
+@Composable
+private fun DailyCard(modifier: Modifier, onDaily: () -> Unit) {
     val done = Progress.dailyDoneToday()
     val streak = Progress.currentStreak()
     val target = GameViewModel.dailyTargetFor(Progress.today())
-    val shape = RoundedCornerShape(22.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(Brush.horizontalGradient(listOf(Color(0x3322D3EE), Color(0x33E879F9))))
-            .border(1.5.dp, Brush.horizontalGradient(listOf(Palette.Cyan, Palette.Magenta)), shape)
-            .clickable(enabled = !done, onClick = onDaily)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    ModeCard(
+        modifier = modifier,
+        title = stringResource(R.string.daily_title),
+        subtitle = if (done) stringResource(R.string.daily_done) else stringResource(R.string.daily_goal, target),
+        colors = listOf(Palette.Cyan, Color(0xFF34D399)),
+        enabled = !done,
+        badge = if (streak > 0) "🔥 $streak" else null,
+        onClick = onDaily,
     ) {
-        Box(
-            Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0x33FFFFFF)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (done) Icons.Default.Check else Icons.Default.Star,
-                contentDescription = null,
-                tint = if (done) Color(0xFF34D399) else Palette.Gold,
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.daily_title), style = Styles.plain(18, Palette.TextPrimary, FontWeight.Black))
-            Text(
-                if (done) stringResource(R.string.daily_done) else stringResource(R.string.daily_goal, target),
-                style = Styles.plain(14, if (done) Color(0xFF34D399) else Palette.TextSecondary, FontWeight.SemiBold),
-            )
-        }
-        if (streak > 0) {
-            Text("🔥 $streak", style = Styles.glow(20, Color(0xFFFB923C), FontWeight.Black))
-        }
+        Icon(
+            if (done) Icons.Default.Check else Icons.Default.Star,
+            contentDescription = null,
+            tint = if (done) Color(0xFF34D399) else Palette.Gold,
+            modifier = Modifier.size(26.dp),
+        )
     }
 }
 

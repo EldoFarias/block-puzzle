@@ -6,6 +6,7 @@ KEYS = [k for k in re.findall(r'<string name="([^"]+)">', open(os.path.join(RES,
 
 T = {
 "fr": dict(
+ adventure="Aventure", level_x="Niveau %1$d", goal_gems="Récoltez %1$d gemmes", goal_lines="Effacez %1$d lignes", goal_score="Marquez %1$d points", stars_hint="★★★ en %1$d coups maximum", level_complete="NIVEAU RÉUSSI !", next_level="Niveau suivant", map="Carte", left_gems="Encore %1$d gemmes !", left_points="Encore %1$d points !", gems_progress="Gemmes %1$d/%2$d", points_progress="Objectif %1$d", play="Jouer",
  paused="Pause", sound="Sons", vibration="Vibration", resume="Reprendre", restart="Recommencer",
  privacy_options="Confidentialité et publicités", no_space="Plus de place !", new_record="NOUVEAU RECORD !",
  score="SCORE", best_x="Record : %1$d", continue_video="▶  Continuer (voir une vidéo)", loading_video="Chargement de la vidéo…",
@@ -30,6 +31,7 @@ T = {
  stat_best_streak="Meilleure série", stat_coins="Pièces", near_record="Plus que %1$d points pour battre votre record !",
 ),
 "de": dict(
+ adventure="Abenteuer", level_x="Level %1$d", goal_gems="Sammle %1$d Edelsteine", goal_lines="Räume %1$d Reihen ab", goal_score="Erziele %1$d Punkte", stars_hint="★★★ in höchstens %1$d Zügen", level_complete="LEVEL GESCHAFFT!", next_level="Nächstes Level", map="Karte", left_gems="Noch %1$d Edelsteine!", left_points="Noch %1$d Punkte!", gems_progress="Steine %1$d/%2$d", points_progress="Ziel %1$d", play="Spielen",
  paused="Pause", sound="Sound", vibration="Vibration", resume="Weiter", restart="Neu starten",
  privacy_options="Datenschutz und Werbung", no_space="Kein Platz mehr!", new_record="NEUER REKORD!",
  score="PUNKTE", best_x="Rekord: %1$d", continue_video="▶  Weiterspielen (Video ansehen)", loading_video="Video wird geladen…",
@@ -54,6 +56,7 @@ T = {
  stat_best_streak="Längste Serie", stat_coins="Münzen", near_record="Nur %1$d Punkte bis zu deinem Rekord!",
 ),
 "tr": dict(
+ adventure="Macera", level_x="Bölüm %1$d", goal_gems="%1$d mücevher topla", goal_lines="%1$d satır temizle", goal_score="%1$d puan yap", stars_hint="★★★ en fazla %1$d hamlede", level_complete="BÖLÜM TAMAMLANDI!", next_level="Sonraki bölüm", map="Harita", left_gems="%1$d mücevher kaldı!", left_points="%1$d puan kaldı!", gems_progress="Mücevher %1$d/%2$d", points_progress="Hedef %1$d", play="Oyna",
  paused="Duraklatıldı", sound="Ses", vibration="Titreşim", resume="Devam et", restart="Yeniden başlat",
  privacy_options="Gizlilik ve reklam seçenekleri", no_space="Yer kalmadı!", new_record="YENİ REKOR!",
  score="PUAN", best_x="Rekor: %1$d", continue_video="▶  Devam et (video izle)", loading_video="Video yükleniyor…",
@@ -78,6 +81,7 @@ T = {
  stat_best_streak="En uzun seri", stat_coins="Altın", near_record="Rekoruna sadece %1$d puan kaldı!",
 ),
 "in": dict(
+ adventure="Petualangan", level_x="Level %1$d", goal_gems="Kumpulkan %1$d permata", goal_lines="Hapus %1$d baris", goal_score="Raih %1$d poin", stars_hint="★★★ dalam %1$d langkah atau kurang", level_complete="LEVEL SELESAI!", next_level="Level berikutnya", map="Peta", left_gems="Kurang %1$d permata lagi!", left_points="Kurang %1$d poin lagi!", gems_progress="Permata %1$d/%2$d", points_progress="Target %1$d", play="Main",
  paused="Dijeda", sound="Suara", vibration="Getar", resume="Lanjutkan", restart="Mulai ulang",
  privacy_options="Privasi dan iklan", no_space="Tidak ada tempat lagi!", new_record="REKOR BARU!",
  score="SKOR", best_x="Rekor: %1$d", continue_video="▶  Lanjutkan (tonton video)", loading_video="Memuat video…",
@@ -102,6 +106,7 @@ T = {
  stat_best_streak="Rentetan terbaik", stat_coins="Koin", near_record="Hanya kurang %1$d poin dari rekormu!",
 ),
 "hi": dict(
+ adventure="एडवेंचर", level_x="लेवल %1$d", goal_gems="%1$d रत्न इकट्ठा करें", goal_lines="%1$d लाइनें साफ़ करें", goal_score="%1$d अंक बनाएँ", stars_hint="★★★ ज़्यादा से ज़्यादा %1$d चालों में", level_complete="लेवल पूरा!", next_level="अगला लेवल", map="मैप", left_gems="%1$d रत्न बाकी थे!", left_points="%1$d अंक बाकी थे!", gems_progress="रत्न %1$d/%2$d", points_progress="लक्ष्य %1$d", play="खेलें",
  paused="रुका हुआ", sound="आवाज़", vibration="वाइब्रेशन", resume="जारी रखें", restart="फिर से शुरू करें",
  privacy_options="प्राइवेसी और विज्ञापन विकल्प", no_space="जगह खत्म!", new_record="नया रिकॉर्ड!",
  score="स्कोर", best_x="रिकॉर्ड: %1$d", continue_video="▶  जारी रखें (वीडियो देखें)", loading_video="वीडियो लोड हो रहा है…",
