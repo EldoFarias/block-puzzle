@@ -1,8 +1,8 @@
 name: Build Android
 
+# Manual only: pushes to main are just backups. Run it (Actions tab or `gh workflow run android.yml`)
+# when a test APK is needed on the phone.
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:

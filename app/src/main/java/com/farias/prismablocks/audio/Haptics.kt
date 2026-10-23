@@ -1,7 +1,9 @@
 package com.farias.prismablocks.audio
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -13,6 +15,12 @@ import com.farias.prismablocks.game.Haptic
  */
 object Haptics {
     private var vibrator: Vibrator? = null
+    private val gameAudio: AudioAttributes by lazy {
+        AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+    }
 
     private fun vibrator(context: Context): Vibrator? {
         vibrator?.let { return it }
@@ -34,13 +42,21 @@ object Haptics {
                 val amp = v.hasAmplitudeControl()
                 val effect = when (kind) {
                     // Without amplitude control a "light" tick is a full-strength buzz, so skip it.
-                    Haptic.TICK -> if (amp) VibrationEffect.createOneShot(8, 40) else return
+                    // Shorter than ~12 ms is not felt on many motors.
+                    Haptic.TICK -> if (amp) VibrationEffect.createOneShot(14, 70) else return
                     Haptic.PLACE -> VibrationEffect.createOneShot(18, if (amp) 110 else VibrationEffect.DEFAULT_AMPLITUDE)
                     Haptic.CLEAR -> VibrationEffect.createOneShot(40, if (amp) 190 else VibrationEffect.DEFAULT_AMPLITUDE)
                     Haptic.COMBO -> waveform(longArrayOf(0, 35, 45, 35, 45, 60), intArrayOf(0, 170, 0, 210, 0, 255), amp)
                     Haptic.HEAVY -> waveform(longArrayOf(0, 70, 40, 90), intArrayOf(0, 255, 0, 200), amp)
                 }
-                v.vibrate(effect)
+                // Without attributes some ROMs (MIUI/HyperOS) treat the vibration as touch feedback
+                // and drop it; declaring media/game usage puts it under the media vibration setting.
+                if (Build.VERSION.SDK_INT >= 33) {
+                    v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA))
+                } else {
+                    @Suppress("DEPRECATION")
+                    v.vibrate(effect, gameAudio)
+                }
             } else {
                 @Suppress("DEPRECATION")
                 when (kind) {

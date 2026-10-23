@@ -12,8 +12,9 @@ adb logcat -s PrismaBlocks AndroidRuntime Vibrator VibratorManagerService
 
 - Debug usa sempre IDs de **teste** do AdMob; release lê os IDs reais de variáveis/secrets (`ADMOB_*`).
 - `applicationId` = `com.farias.prismablocks` (não mudar depois de publicar).
-- A cada push na `main`, o GitHub Actions (`.github/workflows/android.yml`) gera o APK de teste em Releases → `teste`.
-  Erros de compilação aparecem como anotações do job.
+- Push na `main` é só backup. O APK de teste (Releases → `teste`) sai do `.github/workflows/android.yml`, que agora é
+  manual: `gh workflow run android.yml` quando o Eldo for testar pelo celular. Erros de compilação aparecem como anotações do job.
+- O APK do CI e o instalado daqui têm assinaturas de debug diferentes: trocar de um para o outro exige desinstalar (perde o progresso).
 - `.github/workflows/screenshots.yml` (manual): abre o app no emulador em 4 tamanhos e publica os prints em Releases → `telas`.
 - Atalhos só no debug: `adb shell am start -n com.farias.prismablocks.debug/com.farias.prismablocks.MainActivity --es screen game`
   (`home`, `chest`, `game`, `adventure_game`, `map`, `themes`, `stats`; `--ez landscape true`).
@@ -46,15 +47,9 @@ Telas se adaptam: compacto (altura < 660 dp), tablet (escala 1.3 nos controles) 
 
 ## Pendências
 
-1. **Vibração não funciona no celular do Eldo** (vibração ligada no jogo). Já trocamos `performHapticFeedback` por
-   `Vibrator`/`VibratorManager` direto (`audio/Haptics.kt`) com permissão `VIBRATE`, e ainda assim não vibra.
-   Hipóteses para investigar com o celular no cabo:
-   - Vibração sem atributos é tratada como "toque" e bloqueada pela intensidade de vibração ao toque da ROM (MIUI/HyperOS).
-     Testar `vibrate(effect, VibrationAttributes.createForUsage(USAGE_MEDIA))` (API 33+) ou
-     `vibrate(effect, AudioAttributes USAGE_GAME)` (API 26–32).
-   - Modo silencioso / Não perturbe bloqueando vibrações de mídia.
-   - Conferir no logcat (`VibratorManagerService`) se a vibração chega e por que é ignorada.
-   - Confirmar que `Progress.vibrationOn` está `true` e que `vm.haptic` está sendo chamado.
+1. ~~Vibração no celular do Eldo~~ — **resolvida** (Xiaomi, HyperOS 1.0, API 33). Sem atributos a vibração saía como
+   `Usage=TOUCH` e era descartada (`ignored_for_settings`), porque a vibração ao toque está desligada no aparelho.
+   `Haptics.kt` agora declara `USAGE_MEDIA` (API 33+) / `USAGE_GAME` (26–32). Diagnóstico: `adb shell dumpsys vibrator_manager`.
 2. Preparar publicação: política de privacidade (GitHub Pages), textos/prints da loja em 8 idiomas,
    keystore de upload + secrets `KEYSTORE_*`, IDs reais do AdMob nos secrets.
 3. Fase 2: login com Google Play Games (salvamento na nuvem, ranking, conquistas).

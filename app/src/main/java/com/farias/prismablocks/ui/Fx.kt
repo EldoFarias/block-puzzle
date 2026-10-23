@@ -50,9 +50,17 @@ class Fx {
     private var last = 0L
     private var nextId = 1L
     private var shakeAmount = 0f
+    private var lastPop = 0L
+    private var wakeFrames = 0
+    private var wasBusy = false
     private val rng = Random.Default
 
-    fun step(frameNanos: Long) {
+    /**
+     * Advances the effects. Readers of [frame] redraw only when it changes, so the frame is published
+     * only while something is animating ([keepAlive] or an effect of this class), plus one last frame
+     * to draw the settled state. An idle board then costs nothing.
+     */
+    fun step(frameNanos: Long, keepAlive: Boolean = true) {
         now = frameNanos
         val dt = if (last == 0L) 0.016f else ((frameNanos - last) / 1e9f).coerceIn(0f, 0.05f)
         last = frameNanos
@@ -81,7 +89,16 @@ class Fx {
             shakeAmount = 0f
             shake.floatValue = 0f
         }
-        frame.longValue = frameNanos
+        val busy = keepAlive || wakeFrames > 0 || particles.isNotEmpty() || flashes.isNotEmpty() ||
+            texts.isNotEmpty() || shakeAmount > 0f || now - lastPop < POP_NANOS
+        if (wakeFrames > 0) wakeFrames--
+        if (busy || wasBusy) frame.longValue = frameNanos
+        wasBusy = busy
+    }
+
+    /** Publishes a few frames even when idle, e.g. so overlays can read the board position after layout. */
+    fun wake(frames: Int = 30) {
+        wakeFrames = maxOf(wakeFrames, frames)
     }
 
     fun burst(center: Offset, color: Color, cellPx: Float, count: Int = 7) {
@@ -134,6 +151,7 @@ class Fx {
 
     fun pop(index: Int) {
         pops[index] = now
+        lastPop = now
     }
 
     companion object {

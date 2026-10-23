@@ -63,7 +63,6 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,7 +72,6 @@ import androidx.compose.ui.unit.dp
 import com.farias.prismablocks.R
 import com.google.android.gms.ads.AdSize
 import com.farias.prismablocks.ads.AdsManager
-import com.farias.prismablocks.audio.Haptics
 import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameEngine
@@ -90,16 +88,16 @@ private class PendingPay(val power: Power, val action: () -> Unit)
 
 @Composable
 fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, onHome: () -> Unit) {
-    val view = LocalView.current
     val density = LocalDensity.current
     var pendingPay by remember { mutableStateOf<PendingPay?>(null) }
 
-    LaunchedEffect(view) { vm.haptic = { kind -> Haptics.play(view.context, kind) } }
     LaunchedEffect(density) { vm.liftPx = with(density) { 64.dp.toPx() } }
     LaunchedEffect(Unit) {
+        // A few frames on entry so the hint and tutorial find the board after the first layout.
+        vm.fx.wake()
         while (true) withFrameNanos {
-            vm.fx.step(it)
             vm.tickEmbers()
+            vm.fx.step(it, keepAlive = vm.needsFrames())
         }
     }
     // A new record or a won daily is the best moment to ask for a store rating.

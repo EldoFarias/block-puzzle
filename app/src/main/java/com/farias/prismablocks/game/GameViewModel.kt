@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.farias.prismablocks.R
+import com.farias.prismablocks.audio.Haptics
 import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.audio.SoundManager
 import com.farias.prismablocks.data.MissionType
@@ -48,9 +49,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val engine = GameEngine()
     val sound = SoundManager.get(app)
     val fx = Fx()
-
-    /** Set by the UI so the view model can trigger vibration. */
-    var haptic: (Haptic) -> Unit = {}
 
     // ------------------------------------------------------------- observable state
     var mode by mutableStateOf(Mode.CLASSIC)
@@ -544,6 +542,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private val emberRng = kotlin.random.Random(7)
 
+    /**
+     * Board animations that run on their own (combo fire, twinkling gems, game over fade).
+     * When false and no effect is playing, the board stops redrawing every frame.
+     */
+    fun needsFrames(): Boolean {
+        if (paused) return false
+        if (combo >= 2 && !finished && !bombMode) return true
+        if (gameOver && fx.now - gameOverAt < 700_000_000L) return true
+        return gems.any { it }
+    }
+
     fun playInvalid() {
         sound.play(Sfx.INVALID, 0.5f)
     }
@@ -578,7 +587,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     // ------------------------------------------------------------- helpers
 
     private fun vibrate(kind: Haptic) {
-        if (Progress.vibrationOn) haptic(kind)
+        if (Progress.vibrationOn) Haptics.play(getApplication(), kind)
     }
 
     private fun cellCenter(r: Int, c: Int) =
