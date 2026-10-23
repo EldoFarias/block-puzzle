@@ -49,7 +49,12 @@ fun PauseOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
                 com.farias.prismablocks.audio.MusicPlayer.update()
             }
             ToggleRow(stringResource(R.string.sound), Progress.soundOn) { Progress.toggleSound() }
-            ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) { Progress.toggleVibration() }
+            val ctx = LocalContext.current
+            ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) {
+                Progress.toggleVibration()
+                // A short buzz confirms that vibration is now on.
+                if (Progress.vibrationOn) com.farias.prismablocks.audio.Haptics.play(ctx, com.farias.prismablocks.game.Haptic.CLEAR)
+            }
             Spacer(Modifier.height(8.dp))
             PrimaryButton(stringResource(R.string.resume)) { vm.paused = false }
             SecondaryButton(stringResource(R.string.restart)) {

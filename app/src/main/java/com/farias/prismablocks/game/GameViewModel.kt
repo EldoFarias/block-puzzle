@@ -21,7 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-enum class Haptic { TICK, PLACE, CLEAR, HEAVY }
+enum class Haptic { TICK, PLACE, CLEAR, COMBO, HEAVY }
 
 enum class Mode { CLASSIC, DAILY, ADVENTURE }
 
@@ -312,7 +312,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (r.lines >= 3 || r.combo >= 4 || r.boardCleared) fx.shake(cellPx * 0.22f)
             sound.play(if (r.combo >= 2 || r.lines >= 2) Sfx.COMBO else Sfx.CLEAR, 1f, 1f + 0.05f * (r.combo - 1).coerceIn(0, 8))
-            vibrate(if (r.lines >= 3) Haptic.HEAVY else Haptic.CLEAR)
+            vibrate(
+                when {
+                    r.lines >= 3 || r.boardCleared -> Haptic.HEAVY
+                    r.combo >= 2 || r.lines == 2 -> Haptic.COMBO
+                    else -> Haptic.CLEAR
+                }
+            )
         } else {
             sound.play(Sfx.PLACE, 0.8f, 0.95f + (r.placed.size % 3) * 0.04f)
             vibrate(Haptic.PLACE)

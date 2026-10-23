@@ -543,7 +543,12 @@ private fun SettingsDialog(ads: AdsManager, onToggleReminder: () -> Unit, onHowT
                 com.farias.prismablocks.audio.MusicPlayer.update()
             }
             ToggleRow(stringResource(R.string.sound), Progress.soundOn) { Progress.toggleSound() }
-            ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) { Progress.toggleVibration() }
+            val ctx = LocalContext.current
+            ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) {
+                Progress.toggleVibration()
+                // A short buzz confirms that vibration is now on.
+                if (Progress.vibrationOn) com.farias.prismablocks.audio.Haptics.play(ctx, com.farias.prismablocks.game.Haptic.CLEAR)
+            }
             ToggleRow(stringResource(R.string.notifications), Progress.notificationsOn) { onToggleReminder() }
             if (ads.privacyOptionsRequired) PrivacyLink(ads)
             Spacer(Modifier.height(4.dp))

@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import com.farias.prismablocks.R
 import com.google.android.gms.ads.AdSize
 import com.farias.prismablocks.ads.AdsManager
+import com.farias.prismablocks.audio.Haptics
 import com.farias.prismablocks.audio.Sfx
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameEngine
@@ -93,7 +94,7 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
     val density = LocalDensity.current
     var pendingPay by remember { mutableStateOf<PendingPay?>(null) }
 
-    LaunchedEffect(view) { vm.haptic = { kind -> performHaptic(view, kind) } }
+    LaunchedEffect(view) { vm.haptic = { kind -> Haptics.play(view.context, kind) } }
     LaunchedEffect(density) { vm.liftPx = with(density) { 64.dp.toPx() } }
     LaunchedEffect(Unit) {
         while (true) withFrameNanos {

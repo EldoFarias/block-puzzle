@@ -55,6 +55,7 @@ fun performHaptic(view: View, kind: Haptic) {
         Haptic.TICK -> HapticFeedbackConstants.CLOCK_TICK
         Haptic.PLACE -> HapticFeedbackConstants.KEYBOARD_TAP
         Haptic.CLEAR -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
+        Haptic.COMBO -> HapticFeedbackConstants.LONG_PRESS
         Haptic.HEAVY -> HapticFeedbackConstants.LONG_PRESS
     }
     view.performHapticFeedback(constant)
