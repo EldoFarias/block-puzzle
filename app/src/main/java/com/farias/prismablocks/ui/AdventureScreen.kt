@@ -94,8 +94,14 @@ fun AdventureScreen(onBack: () -> Unit, onPlay: (Int) -> Unit) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Palette.TextPrimary)
                 }
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.adventure), style = Styles.gradient(28))
-                Spacer(Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.adventure),
+                    style = Styles.gradient(24),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
                 StarIcon(true, Modifier.size(22.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(Progress.totalStars.toString(), style = Styles.glow(18, Palette.Gold))

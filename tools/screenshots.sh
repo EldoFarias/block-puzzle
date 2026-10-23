@@ -15,7 +15,7 @@ shot() { # name screen [landscape]
   else
     adb shell am start -n $PKG/$ACT --es screen "$2"
   fi
-  sleep 8
+  sleep 14
   adb exec-out screencap -p > "shots/$1.png"
 }
 
@@ -24,7 +24,9 @@ for cfg in "tiny 480x854 240" "small 720x1280 320" "phone 1080x2400 420" "tablet
   name=$1
   adb shell wm size "$2"
   adb shell wm density "$3"
-  sleep 2
+  sleep 3
+  # Warm-up launch: the first start after a resize is slow on the emulator.
+  shot "_warmup-$name" home
   for s in home game adventure_game map; do shot "$name-$s" "$s"; done
 done
 # Extra checks on the normal phone: daily chest popup, themes, stats

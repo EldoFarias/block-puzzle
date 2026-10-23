@@ -180,7 +180,7 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
                 // Portrait: shrink the fixed parts on short phones, cap the board on tablets.
                 val dims = if (maxHeight < 660.dp) GameDims.compact else GameDims.normal
                 val fixed = dims.topBar + dims.header + dims.gap + dims.powerBar + bannerH + 12.dp
-                val boardSide = minOf(maxWidth - 24.dp, (maxHeight - fixed) / 1.34f).coerceIn(150.dp, 620.dp)
+                val boardSide = minOf(maxWidth - 24.dp, (maxHeight - fixed) / (1f + dims.trayRatio)).coerceIn(150.dp, 720.dp)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -192,9 +192,9 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
                     Spacer(Modifier.weight(1f))
                     Board(vm, boardSide, onBombTap)
                     Spacer(Modifier.height(dims.gap))
-                    Tray(vm, boardSide)
-                    // Narrow boards (small phones) show icons + price only.
-                    PowerBar(vm, boardSide, dims, vertical = false, showLabels = boardSide >= 330.dp, onUse = onPower)
+                    Tray(vm, boardSide, dims.trayRatio)
+                    // Narrow phones show icons + price only.
+                    PowerBar(vm, maxWidth - 16.dp, dims, vertical = false, showLabels = maxWidth >= 392.dp, onUse = onPower)
                     Spacer(Modifier.weight(1f))
                     BannerAd(ads)
                 }
@@ -483,11 +483,11 @@ private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
 // --------------------------------------------------------------------------- tray
 
 @Composable
-private fun Tray(vm: GameViewModel, boardSide: Dp) {
+private fun Tray(vm: GameViewModel, boardSide: Dp, ratio: Float) {
     Row(
         modifier = Modifier
             .width(boardSide)
-            .height(boardSide * 0.34f),
+            .height(boardSide * ratio),
     ) {
         for (i in 0 until 3) {
             TraySlot(vm, i, Modifier.weight(1f).fillMaxHeight())
@@ -605,7 +605,7 @@ private fun PowerButton(
             .background(if (active) Palette.Danger.copy(alpha = 0.25f) else Palette.Glass)
             .border(if (active) 2.dp else 1.dp, if (active) Palette.Danger else Palette.GlassBorder, shape)
             .clickable(enabled = enabled) { onUse(power) }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = if (showLabels) 12.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         icon(Modifier.size(if (showLabels) 26.dp else 22.dp))
@@ -769,9 +769,11 @@ private class GameDims(
     val scoreSp: Int,
     val gap: Dp,
     val powerBar: Dp,
+    /** Tray height as a fraction of the board side. */
+    val trayRatio: Float,
 ) {
     companion object {
-        val normal = GameDims(topBar = 52.dp, header = 100.dp, scoreSp = 52, gap = 14.dp, powerBar = 70.dp)
-        val compact = GameDims(topBar = 44.dp, header = 74.dp, scoreSp = 38, gap = 8.dp, powerBar = 58.dp)
+        val normal = GameDims(topBar = 52.dp, header = 100.dp, scoreSp = 52, gap = 14.dp, powerBar = 70.dp, trayRatio = 0.34f)
+        val compact = GameDims(topBar = 44.dp, header = 74.dp, scoreSp = 38, gap = 8.dp, powerBar = 58.dp, trayRatio = 0.30f)
     }
 }
