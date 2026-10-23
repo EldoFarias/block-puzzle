@@ -1,0 +1,145 @@
+"""Writes strings.xml for French, German, Turkish, Indonesian and Hindi."""
+import os, re, sys
+
+RES = sys.argv[1]
+KEYS = [k for k in re.findall(r'<string name="([^"]+)">', open(os.path.join(RES, "values/strings.xml")).read()) if k != "app_name"]
+
+T = {
+"fr": dict(
+ paused="Pause", sound="Sons", vibration="Vibration", resume="Reprendre", restart="Recommencer",
+ privacy_options="Confidentialité et publicités", no_space="Plus de place !", new_record="NOUVEAU RECORD !",
+ score="SCORE", best_x="Record : %1$d", continue_video="▶  Continuer (voir une vidéo)", loading_video="Chargement de la vidéo…",
+ play_again="Rejouer", combo_x="COMBO x%1$d", praise_2="Super !", praise_3="Incroyable !", praise_4="LÉGENDAIRE !",
+ praise_board_clear="PLATEAU VIDÉ !", home_play="JOUER", home_continue="CONTINUER", home_new_game="Nouvelle partie",
+ daily_title="Défi du jour", daily_goal="Effacez %1$d lignes", daily_play="Jouer le défi", daily_done="Terminé ! Revenez demain",
+ streak_days="🔥 %1$d jours d'affilée", themes="Thèmes", how_to="Comment jouer", settings="Paramètres",
+ notifications="Rappel quotidien", watch_for_coins="Vidéo +%1$d", coins_reward="+%1$d pièces !",
+ theme_neon="Néon", theme_ocean="Océan", theme_candy="Bonbons", theme_lava="Lave", theme_galaxy="Galaxie", theme_gold="Or",
+ in_use="Utilisé", use="Utiliser", need_coins="Il vous manque %1$d pièces", power_undo="Annuler", power_bomb="Bombe",
+ power_shuffle="Changer", bomb_hint="Touchez le plateau pour exploser", not_enough_title="Pas assez de pièces",
+ watch_free="▶  Voir une vidéo et l'utiliser gratuitement", cancel="Annuler",
+ no_video="Aucune vidéo disponible pour le moment. Réessayez bientôt.", home="Accueil", coins_earned="+%1$d pièces",
+ daily_win="DÉFI RÉUSSI !", daily_fail="Encore %1$d lignes !", try_again="Réessayer", lines_progress="Lignes %1$d/%2$d",
+ tutorial_drag="Faites glisser les pièces sur le plateau", tutorial_lines="Complétez une ligne ou une colonne pour l'effacer",
+ how_to_1="Faites glisser les pièces sur le plateau.", how_to_2="Complétez une ligne ou une colonne entière pour l'effacer et marquer des points.",
+ how_to_3="Enchaînez les lignes pour faire des COMBOS et d'énormes scores.", how_to_4="Les pièces ne tournent pas. Quand plus rien ne rentre, la partie est finie !",
+ got_it="Compris", notif_channel="Défi du jour", notif_title="Votre défi du jour est prêt ! 🔥",
+ notif_text="Quelques minutes suffisent. Relèverez-vous le défi ?", notif_text_streak="Gardez votre série de %1$d jours !",
+ daily_short="Défi", music="Musique", stats="Statistiques", tile_stats="Stats", stat_best="Record", stat_games="Parties jouées",
+ stat_avg="Score moyen", stat_lines="Lignes effacées", stat_combo="Meilleur combo", stat_dailies="Défis réussis",
+ stat_best_streak="Meilleure série", stat_coins="Pièces", near_record="Plus que %1$d points pour battre votre record !",
+),
+"de": dict(
+ paused="Pause", sound="Sound", vibration="Vibration", resume="Weiter", restart="Neu starten",
+ privacy_options="Datenschutz und Werbung", no_space="Kein Platz mehr!", new_record="NEUER REKORD!",
+ score="PUNKTE", best_x="Rekord: %1$d", continue_video="▶  Weiterspielen (Video ansehen)", loading_video="Video wird geladen…",
+ play_again="Nochmal spielen", combo_x="COMBO x%1$d", praise_2="Super!", praise_3="Fantastisch!", praise_4="LEGENDÄR!",
+ praise_board_clear="BRETT LEER!", home_play="SPIELEN", home_continue="WEITER", home_new_game="Neues Spiel",
+ daily_title="Tägliche Challenge", daily_goal="Räume %1$d Reihen ab", daily_play="Challenge spielen", daily_done="Geschafft! Komm morgen wieder",
+ streak_days="🔥 %1$d Tage in Folge", themes="Designs", how_to="Spielanleitung", settings="Einstellungen",
+ notifications="Tägliche Erinnerung", watch_for_coins="Video +%1$d", coins_reward="+%1$d Münzen!",
+ theme_neon="Neon", theme_ocean="Ozean", theme_candy="Bonbon", theme_lava="Lava", theme_galaxy="Galaxie", theme_gold="Gold",
+ in_use="Aktiv", use="Nutzen", need_coins="Dir fehlen %1$d Münzen", power_undo="Zurück", power_bomb="Bombe",
+ power_shuffle="Tauschen", bomb_hint="Tippe aufs Brett, um zu sprengen", not_enough_title="Nicht genug Münzen",
+ watch_free="▶  Video ansehen und gratis nutzen", cancel="Abbrechen",
+ no_video="Gerade ist kein Video verfügbar. Versuche es gleich nochmal.", home="Start", coins_earned="+%1$d Münzen",
+ daily_win="CHALLENGE GESCHAFFT!", daily_fail="Noch %1$d Reihen!", try_again="Nochmal versuchen", lines_progress="Reihen %1$d/%2$d",
+ tutorial_drag="Ziehe die Teile auf das Brett", tutorial_lines="Fülle eine Reihe oder Spalte, um sie abzuräumen",
+ how_to_1="Ziehe die Teile aus der Ablage auf das Brett.", how_to_2="Fülle eine ganze Reihe oder Spalte, um sie abzuräumen und Punkte zu holen.",
+ how_to_3="Räume mehrmals hintereinander ab für COMBOS und riesige Punktzahlen.", how_to_4="Teile lassen sich nicht drehen. Passt keins mehr, ist das Spiel vorbei!",
+ got_it="Verstanden", notif_channel="Tägliche Challenge", notif_title="Deine tägliche Challenge wartet! 🔥",
+ notif_text="Dauert nur ein paar Minuten. Schaffst du sie?", notif_text_streak="Halte deine Serie von %1$d Tagen!",
+ daily_short="Challenge", music="Musik", stats="Statistiken", tile_stats="Statistik", stat_best="Rekord", stat_games="Gespielte Spiele",
+ stat_avg="Durchschnitt", stat_lines="Abgeräumte Reihen", stat_combo="Bester Combo", stat_dailies="Challenges geschafft",
+ stat_best_streak="Längste Serie", stat_coins="Münzen", near_record="Nur %1$d Punkte bis zu deinem Rekord!",
+),
+"tr": dict(
+ paused="Duraklatıldı", sound="Ses", vibration="Titreşim", resume="Devam et", restart="Yeniden başlat",
+ privacy_options="Gizlilik ve reklam seçenekleri", no_space="Yer kalmadı!", new_record="YENİ REKOR!",
+ score="PUAN", best_x="Rekor: %1$d", continue_video="▶  Devam et (video izle)", loading_video="Video yükleniyor…",
+ play_again="Tekrar oyna", combo_x="KOMBO x%1$d", praise_2="Harika!", praise_3="İnanılmaz!", praise_4="EFSANE!",
+ praise_board_clear="TAHTA TEMİZ!", home_play="OYNA", home_continue="DEVAM", home_new_game="Yeni oyun",
+ daily_title="Günlük görev", daily_goal="%1$d satır temizle", daily_play="Görevi oyna", daily_done="Tamamlandı! Yarın gel",
+ streak_days="🔥 %1$d gün üst üste", themes="Temalar", how_to="Nasıl oynanır", settings="Ayarlar",
+ notifications="Günlük hatırlatma", watch_for_coins="Video +%1$d", coins_reward="+%1$d altın!",
+ theme_neon="Neon", theme_ocean="Okyanus", theme_candy="Şeker", theme_lava="Lav", theme_galaxy="Galaksi", theme_gold="Altın",
+ in_use="Kullanılıyor", use="Kullan", need_coins="%1$d altın daha gerekli", power_undo="Geri al", power_bomb="Bomba",
+ power_shuffle="Değiştir", bomb_hint="Patlatmak için tahtaya dokun", not_enough_title="Yetersiz altın",
+ watch_free="▶  Video izle, ücretsiz kullan", cancel="İptal",
+ no_video="Şu anda video yok. Birazdan tekrar dene.", home="Ana sayfa", coins_earned="+%1$d altın",
+ daily_win="GÖREV TAMAMLANDI!", daily_fail="%1$d satır kaldı!", try_again="Tekrar dene", lines_progress="Satır %1$d/%2$d",
+ tutorial_drag="Parçaları tahtaya sürükle", tutorial_lines="Temizlemek için bir satırı veya sütunu doldur",
+ how_to_1="Parçaları tepsiden tahtaya sürükle.", how_to_2="Bir satırı veya sütunu tamamen doldurarak temizle ve puan kazan.",
+ how_to_3="Art arda satır temizleyerek KOMBO yap ve büyük puanlar topla.", how_to_4="Parçalar döndürülemez. Hiçbiri sığmazsa oyun biter!",
+ got_it="Anladım", notif_channel="Günlük görev", notif_title="Günlük görevin hazır! 🔥",
+ notif_text="Sadece birkaç dakika sürer. Başarabilir misin?", notif_text_streak="%1$d günlük serini koru!",
+ daily_short="Görev", music="Müzik", stats="İstatistikler", tile_stats="İstatistik", stat_best="Rekor", stat_games="Oynanan oyun",
+ stat_avg="Ortalama puan", stat_lines="Temizlenen satır", stat_combo="En iyi kombo", stat_dailies="Tamamlanan görev",
+ stat_best_streak="En uzun seri", stat_coins="Altın", near_record="Rekoruna sadece %1$d puan kaldı!",
+),
+"in": dict(
+ paused="Dijeda", sound="Suara", vibration="Getar", resume="Lanjutkan", restart="Mulai ulang",
+ privacy_options="Privasi dan iklan", no_space="Tidak ada tempat lagi!", new_record="REKOR BARU!",
+ score="SKOR", best_x="Rekor: %1$d", continue_video="▶  Lanjutkan (tonton video)", loading_video="Memuat video…",
+ play_again="Main lagi", combo_x="KOMBO x%1$d", praise_2="Hebat!", praise_3="Luar biasa!", praise_4="LEGENDARIS!",
+ praise_board_clear="PAPAN BERSIH!", home_play="MAIN", home_continue="LANJUTKAN", home_new_game="Permainan baru",
+ daily_title="Tantangan harian", daily_goal="Hapus %1$d baris", daily_play="Mainkan tantangan", daily_done="Selesai! Kembali besok",
+ streak_days="🔥 %1$d hari berturut-turut", themes="Tema", how_to="Cara bermain", settings="Pengaturan",
+ notifications="Pengingat harian", watch_for_coins="Video +%1$d", coins_reward="+%1$d koin!",
+ theme_neon="Neon", theme_ocean="Samudra", theme_candy="Permen", theme_lava="Lava", theme_galaxy="Galaksi", theme_gold="Emas",
+ in_use="Dipakai", use="Pakai", need_coins="Kurang %1$d koin lagi", power_undo="Urungkan", power_bomb="Bom",
+ power_shuffle="Tukar", bomb_hint="Ketuk papan untuk meledakkan", not_enough_title="Koin tidak cukup",
+ watch_free="▶  Tonton video dan pakai gratis", cancel="Batal",
+ no_video="Belum ada video saat ini. Coba lagi sebentar.", home="Beranda", coins_earned="+%1$d koin",
+ daily_win="TANTANGAN SELESAI!", daily_fail="Kurang %1$d baris lagi!", try_again="Coba lagi", lines_progress="Baris %1$d/%2$d",
+ tutorial_drag="Seret balok ke papan", tutorial_lines="Penuhi baris atau kolom untuk menghapusnya",
+ how_to_1="Seret balok dari baki ke papan.", how_to_2="Penuhi satu baris atau kolom untuk menghapusnya dan dapat poin.",
+ how_to_3="Hapus baris berturut-turut untuk KOMBO dan skor besar.", how_to_4="Balok tidak bisa diputar. Jika tidak ada yang muat, permainan berakhir!",
+ got_it="Mengerti", notif_channel="Tantangan harian", notif_title="Tantangan harianmu sudah siap! 🔥",
+ notif_text="Hanya beberapa menit. Bisakah kamu menyelesaikannya?", notif_text_streak="Pertahankan rentetan %1$d harimu!",
+ daily_short="Tantangan", music="Musik", stats="Statistik", tile_stats="Statistik", stat_best="Rekor", stat_games="Permainan",
+ stat_avg="Rata-rata skor", stat_lines="Baris dihapus", stat_combo="Kombo terbaik", stat_dailies="Tantangan selesai",
+ stat_best_streak="Rentetan terbaik", stat_coins="Koin", near_record="Hanya kurang %1$d poin dari rekormu!",
+),
+"hi": dict(
+ paused="रुका हुआ", sound="आवाज़", vibration="वाइब्रेशन", resume="जारी रखें", restart="फिर से शुरू करें",
+ privacy_options="प्राइवेसी और विज्ञापन विकल्प", no_space="जगह खत्म!", new_record="नया रिकॉर्ड!",
+ score="स्कोर", best_x="रिकॉर्ड: %1$d", continue_video="▶  जारी रखें (वीडियो देखें)", loading_video="वीडियो लोड हो रहा है…",
+ play_again="फिर से खेलें", combo_x="कॉम्बो x%1$d", praise_2="बढ़िया!", praise_3="शानदार!", praise_4="लाजवाब!",
+ praise_board_clear="बोर्ड साफ़!", home_play="खेलें", home_continue="जारी रखें", home_new_game="नया गेम",
+ daily_title="डेली चैलेंज", daily_goal="%1$d लाइनें साफ़ करें", daily_play="चैलेंज खेलें", daily_done="पूरा हुआ! कल फिर आएँ",
+ streak_days="🔥 लगातार %1$d दिन", themes="थीम", how_to="कैसे खेलें", settings="सेटिंग्स",
+ notifications="रोज़ाना रिमाइंडर", watch_for_coins="वीडियो +%1$d", coins_reward="+%1$d सिक्के!",
+ theme_neon="नियॉन", theme_ocean="समुद्र", theme_candy="कैंडी", theme_lava="लावा", theme_galaxy="गैलेक्सी", theme_gold="सोना",
+ in_use="चालू", use="लगाएँ", need_coins="%1$d सिक्के और चाहिए", power_undo="वापस लें", power_bomb="बम",
+ power_shuffle="बदलें", bomb_hint="धमाका करने के लिए बोर्ड पर टैप करें", not_enough_title="सिक्के कम हैं",
+ watch_free="▶  वीडियो देखें और मुफ़्त में इस्तेमाल करें", cancel="रद्द करें",
+ no_video="अभी कोई वीडियो उपलब्ध नहीं है। थोड़ी देर में फिर कोशिश करें।", home="होम", coins_earned="+%1$d सिक्के",
+ daily_win="चैलेंज पूरा!", daily_fail="%1$d लाइनें बाकी थीं!", try_again="फिर कोशिश करें", lines_progress="लाइनें %1$d/%2$d",
+ tutorial_drag="टुकड़ों को बोर्ड पर खींचें", tutorial_lines="पंक्ति या कॉलम भरकर उसे साफ़ करें",
+ how_to_1="टुकड़ों को ट्रे से बोर्ड पर खींचें।", how_to_2="पूरी पंक्ति या कॉलम भरें, वह साफ़ होगी और अंक मिलेंगे।",
+ how_to_3="लगातार लाइनें साफ़ करें और कॉम्बो से बड़े स्कोर पाएँ।", how_to_4="टुकड़े घुमाए नहीं जा सकते। कोई भी फ़िट न हो तो गेम खत्म!",
+ got_it="समझ गया", notif_channel="डेली चैलेंज", notif_title="आपका डेली चैलेंज तैयार है! 🔥",
+ notif_text="बस कुछ मिनट लगेंगे। क्या आप जीत पाएँगे?", notif_text_streak="अपनी %1$d दिन की स्ट्रीक बनाए रखें!",
+ daily_short="चैलेंज", music="संगीत", stats="आँकड़े", tile_stats="आँकड़े", stat_best="रिकॉर्ड", stat_games="खेले गए गेम",
+ stat_avg="औसत स्कोर", stat_lines="साफ़ की गई लाइनें", stat_combo="सबसे बड़ा कॉम्बो", stat_dailies="पूरे चैलेंज",
+ stat_best_streak="सबसे लंबी स्ट्रीक", stat_coins="सिक्के", near_record="रिकॉर्ड से बस %1$d अंक दूर!",
+),
+}
+
+def esc(v):
+    return v.replace("\\", "\\\\").replace("'", "\\'").replace("&", "&amp;").replace("<", "&lt;")
+
+for lang, kv in T.items():
+    missing = [k for k in KEYS if k not in kv]
+    extra = [k for k in kv if k not in KEYS]
+    assert not missing and not extra, (lang, missing, extra)
+    # placeholders must match English
+    en = dict(re.findall(r'<string name="([^"]+)">(.*?)</string>', open(os.path.join(RES, "values/strings.xml")).read()))
+    for k in KEYS:
+        assert sorted(re.findall(r"%\d\$d", kv[k])) == sorted(re.findall(r"%\d\$d", en[k])), (lang, k)
+    d = os.path.join(RES, f"values-{lang}")
+    os.makedirs(d, exist_ok=True)
+    body = "".join(f'    <string name="{k}">{esc(kv[k])}</string>\n' for k in KEYS)
+    open(os.path.join(d, "strings.xml"), "w").write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + body + "</resources>\n")
+    print(lang, len(kv))

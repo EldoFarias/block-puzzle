@@ -42,6 +42,10 @@ fun PauseOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
         GlassPanel {
             Text(stringResource(R.string.paused), style = Styles.gradient(34))
             Spacer(Modifier.height(4.dp))
+            ToggleRow(stringResource(R.string.music), Progress.musicOn) {
+                Progress.toggleMusic()
+                com.farias.prismablocks.audio.MusicPlayer.update()
+            }
             ToggleRow(stringResource(R.string.sound), Progress.soundOn) { Progress.toggleSound() }
             ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) { Progress.toggleVibration() }
             Spacer(Modifier.height(8.dp))
@@ -135,6 +139,14 @@ fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
                     Text(stringResource(R.string.best_x, Progress.best), style = Styles.glow(17, Palette.Gold))
                 }
                 CoinsEarned(vm.coinsEarned)
+                val missing = Progress.best - vm.score
+                if (!vm.newRecord && missing > 0 && vm.score >= Progress.best * 0.6f) {
+                    Text(
+                        stringResource(R.string.near_record, missing),
+                        style = Styles.glow(17, Color(0xFFFB923C), FontWeight.Black),
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             Spacer(Modifier.height(8.dp))
             if (vm.canRevive && ads.adsReady) {

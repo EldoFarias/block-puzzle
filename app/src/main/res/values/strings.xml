@@ -68,4 +68,16 @@
     <string name="notif_text">It only takes a few minutes. Can you beat it?</string>
     <string name="notif_text_streak">Keep your %1$d day streak going!</string>
     <string name="daily_short">Daily</string>
+    <string name="music">Music</string>
+    <string name="stats">Statistics</string>
+    <string name="tile_stats">Stats</string>
+    <string name="stat_best">Best score</string>
+    <string name="stat_games">Games played</string>
+    <string name="stat_avg">Average score</string>
+    <string name="stat_lines">Lines cleared</string>
+    <string name="stat_combo">Best combo</string>
+    <string name="stat_dailies">Daily challenges</string>
+    <string name="stat_best_streak">Best streak</string>
+    <string name="stat_coins">Coins</string>
+    <string name="near_record">Only %1$d points from your record!</string>
 </resources>

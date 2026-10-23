@@ -85,7 +85,7 @@ import kotlin.math.roundToInt
 private class PendingPay(val power: Power, val action: () -> Unit)
 
 @Composable
-fun GameScreen(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
+fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, onHome: () -> Unit) {
     val view = LocalView.current
     val density = LocalDensity.current
     var pendingPay by remember { mutableStateOf<PendingPay?>(null) }
@@ -93,7 +93,14 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
     LaunchedEffect(view) { vm.haptic = { kind -> performHaptic(view, kind) } }
     LaunchedEffect(density) { vm.liftPx = with(density) { 64.dp.toPx() } }
     LaunchedEffect(Unit) {
-        while (true) withFrameNanos { vm.fx.step(it) }
+        while (true) withFrameNanos {
+            vm.fx.step(it)
+            vm.tickEmbers()
+        }
+    }
+    // A new record or a won daily is the best moment to ask for a store rating.
+    LaunchedEffect(vm.showGameOverPanel, vm.showDailyWin) {
+        if ((vm.showGameOverPanel && vm.newRecord) || vm.showDailyWin) onGreatMoment()
     }
     BackHandler(enabled = vm.bombMode) { vm.bombMode = false }
     BackHandler(enabled = !vm.bombMode && !vm.paused && !vm.showGameOverPanel && !vm.showDailyWin) { vm.paused = true }
@@ -221,10 +228,26 @@ private fun ScoreHeader(vm: GameViewModel) {
             if (vm.mode == Mode.DAILY) {
                 DailyProgress(vm.lines, vm.dailyTarget)
             } else if (vm.combo >= 2) {
-                Text(stringResource(R.string.combo_x, vm.combo), style = Styles.glow(16, Palette.Gold, FontWeight.Black))
+                ComboBadge(vm.combo)
             }
         }
     }
+}
+
+@Composable
+private fun ComboBadge(combo: Int) {
+    val transition = rememberInfiniteTransition(label = "combo")
+    val pulse by transition.animateFloat(
+        1f, 1.12f, infiniteRepeatable(tween(380), RepeatMode.Reverse), label = "cp",
+    )
+    Text(
+        "🔥 " + stringResource(R.string.combo_x, combo),
+        style = Styles.glow(17, Color(0xFFFF9100), FontWeight.Black),
+        modifier = Modifier.graphicsLayer {
+            scaleX = pulse
+            scaleY = pulse
+        },
+    )
 }
 
 @Composable
@@ -293,7 +316,27 @@ private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
         val corner = CornerRadius(p * 2.4f)
 
         drawRoundRect(Palette.Glass, cornerRadius = corner)
-        if (vm.bombMode) {
+        val combo = vm.combo
+        if (combo >= 2 && !vm.finished && !vm.bombMode) {
+            // Combo streak: a flickering flame border that grows with the combo.
+            val intensity = ((combo - 1) / 4f).coerceIn(0.35f, 1f)
+            val flicker = 0.8f + 0.2f * kotlin.math.sin(vm.fx.now / 70_000_000.0).toFloat()
+            val phase = (vm.fx.now / 1_600_000_000.0 % 1.0).toFloat()
+            val flame = listOf(Color(0xFFFF3D00), Color(0xFFFF9100), Color(0xFFFFD54F), Color(0xFFFF9100), Color(0xFFFF3D00))
+            val stops = flame.mapIndexed { i, col -> ((i / (flame.size - 1f)) + phase) % 1f to col }.sortedBy { it.first }
+            val center = Offset(size.width / 2f, size.height / 2f)
+            drawRoundRect(
+                Color(0xFFFF6D00).copy(alpha = 0.22f * intensity * flicker),
+                cornerRadius = corner,
+                style = Stroke((6.dp + 8.dp * intensity).toPx()),
+            )
+            drawRoundRect(
+                brush = Brush.sweepGradient(*stops.toTypedArray(), center = center),
+                cornerRadius = corner,
+                alpha = (0.55f + 0.45f * intensity) * flicker,
+                style = Stroke((2.dp + 2.dp * intensity).toPx()),
+            )
+        } else if (vm.bombMode) {
             drawRoundRect(Palette.Danger.copy(alpha = bombPulse), cornerRadius = corner, style = Stroke(3.dp.toPx()))
         } else {
             drawRoundRect(Palette.GlassBorder, cornerRadius = corner, style = Stroke(1.dp.toPx()))

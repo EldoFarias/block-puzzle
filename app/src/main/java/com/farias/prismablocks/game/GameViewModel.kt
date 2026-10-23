@@ -234,6 +234,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         val color = Palette.block(r.color)
         if (!Progress.tutorialDone) Progress.markTutorial(true)
+        Progress.recordMove(r.lines, r.combo)
 
         for (cell in r.placed) fx.pop(cell.r * GameEngine.N + cell.c)
 
@@ -323,7 +324,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun countFinish() {
         if (finishCounted) return
         finishCounted = true
-        Progress.onGameFinished()
+        Progress.onGameFinished(engine.score)
     }
 
     // ------------------------------------------------------------- revive and power-ups
@@ -400,6 +401,28 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         sync()
         if (res.gameOver) onGameOver()
     }
+
+    /** Called every frame: while a combo streak is alive, embers rise from the board edges. */
+    fun tickEmbers() {
+        if (combo < 2 || finished || paused || cellPx <= 1f) return
+        var n = (combo - 1).coerceAtMost(5) * 0.35f
+        val side = cellPx * GameEngine.N
+        while (n > 0f) {
+            if (n >= 1f || emberRng.nextFloat() < n) {
+                val t = emberRng.nextFloat() * side
+                val (x, y) = when (emberRng.nextInt(4)) {
+                    0 -> gridOrigin.x + t to gridOrigin.y
+                    1 -> gridOrigin.x + t to gridOrigin.y + side
+                    2 -> gridOrigin.x to gridOrigin.y + t
+                    else -> gridOrigin.x + side to gridOrigin.y + t
+                }
+                fx.ember(x, y, cellPx)
+            }
+            n -= 1f
+        }
+    }
+
+    private val emberRng = kotlin.random.Random(7)
 
     fun playInvalid() {
         sound.play(Sfx.INVALID, 0.5f)

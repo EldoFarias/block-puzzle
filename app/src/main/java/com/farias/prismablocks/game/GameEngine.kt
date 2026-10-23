@@ -57,6 +57,9 @@ class GameEngine(private var rng: Random = Random.Default) {
     private var undoSnapshot: String? = null
     val canUndo: Boolean get() = undoSnapshot != null
 
+    /** Chance of handing the player the most "helpful" of several valid trays. */
+    var helpChance = 0.65f
+
     init {
         newGame()
     }
@@ -265,7 +268,10 @@ class GameEngine(private var rng: Random = Random.Default) {
 
     private fun generateTray() {
         val fill = board.count { it != 0 } / (N * N).toFloat()
+        val candidates = ArrayList<List<Piece>>()
         var last: List<Piece> = emptyList()
+        // Only bother looking for helpful trays once there is something on the board to complete.
+        val wanted = if (fill > 0.12f) 5 else 1
         for (attempt in 0 until 40) {
             val pieces = randomTriple(fill)
             last = pieces
@@ -273,9 +279,37 @@ class GameEngine(private var rng: Random = Random.Default) {
                 attempt < 25 -> canPlaceAll(board, pieces.map { it.shape }, intArrayOf(0))
                 else -> pieces.any { fitsAnywhere(it.shape) }
             }
-            if (ok) break
+            if (ok) {
+                candidates.add(pieces)
+                if (candidates.size >= wanted || attempt >= 25) break
+            }
         }
-        for (i in 0 until 3) tray[i] = last[i]
+        val chosen = when {
+            candidates.isEmpty() -> last
+            candidates.size == 1 -> candidates[0]
+            rng.nextFloat() < helpChance -> candidates.maxBy { helpScore(it) }
+            else -> candidates[0]
+        }
+        for (i in 0 until 3) tray[i] = chosen[i]
+    }
+
+    /** How many lines each piece could complete right now (capped), summed over the tray. */
+    private fun helpScore(pieces: List<Piece>): Int = pieces.sumOf { minOf(2, bestLines(it.shape)) }
+
+    private fun bestLines(shape: Shape): Int {
+        var best = 0
+        for (r in 0..N - shape.rows) for (c in 0..N - shape.cols) {
+            if (!canPlace(shape, r, c)) continue
+            var lines = 0
+            for (row in r until r + shape.rows) {
+                if ((0 until N).all { col -> board[row * N + col] != 0 || shape.cells.any { it.r == row - r && it.c == col - c } }) lines++
+            }
+            for (col in c until c + shape.cols) {
+                if ((0 until N).all { row -> board[row * N + col] != 0 || shape.cells.any { it.r == row - r && it.c == col - c } }) lines++
+            }
+            if (lines > best) best = lines
+        }
+        return best
     }
 
     private fun randomTriple(fill: Float): List<Piece> {

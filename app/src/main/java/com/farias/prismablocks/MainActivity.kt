@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.farias.prismablocks.ads.AdsManager
+import com.farias.prismablocks.audio.MusicPlayer
 import com.farias.prismablocks.audio.SoundManager
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameViewModel
@@ -21,9 +22,10 @@ import com.farias.prismablocks.notify.DailyReminder
 import com.farias.prismablocks.ui.GameScreen
 import com.farias.prismablocks.ui.HomeScreen
 import com.farias.prismablocks.ui.SplashScreen
+import com.farias.prismablocks.ui.StatsScreen
 import com.farias.prismablocks.ui.ThemesScreen
 
-enum class Screen { SPLASH, HOME, GAME, THEMES }
+enum class Screen { SPLASH, HOME, GAME, THEMES, STATS }
 
 class MainActivity : ComponentActivity() {
 
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
         ads = AdsManager(this)
         ads.start()
         val sound = SoundManager.get(this)
+        MusicPlayer.init(this)
 
         setContent {
             var screen by remember { mutableStateOf(Screen.SPLASH) }
@@ -71,19 +74,32 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onThemes = { screen = Screen.THEMES },
+                        onStats = { screen = Screen.STATS },
                     )
-                    Screen.GAME -> GameScreen(vm, ads) {
-                        vm.save()
-                        screen = Screen.HOME
-                    }
+                    Screen.GAME -> GameScreen(
+                        vm = vm,
+                        ads = ads,
+                        onGreatMoment = { ReviewPrompt.maybeAsk(this@MainActivity) },
+                        onHome = {
+                            vm.save()
+                            screen = Screen.HOME
+                        },
+                    )
                     Screen.THEMES -> ThemesScreen(sound) { screen = Screen.HOME }
+                    Screen.STATS -> StatsScreen { screen = Screen.HOME }
                 }
             }
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        MusicPlayer.onResume()
+    }
+
     override fun onPause() {
         super.onPause()
+        MusicPlayer.onPause()
         vm.cancelDrag()
         vm.save()
     }

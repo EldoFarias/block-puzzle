@@ -108,4 +108,5 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:3.1.0")
+    implementation("com.google.android.play:review:2.0.2")
 }

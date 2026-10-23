@@ -14,6 +14,8 @@ class Particle(
     var vx: Float, var vy: Float,
     var life: Float, val maxLife: Float,
     val color: Color, val size: Float,
+    /** Vertical acceleration in px/s² (negative floats up, for embers). */
+    val g: Float = 1800f,
 )
 
 /** A cleared cell that is bursting out of the board. */
@@ -61,7 +63,7 @@ class Fx {
                 val p = it.next()
                 p.life -= dt
                 if (p.life <= 0f) { it.remove(); continue }
-                p.vy += 1800f * dt
+                p.vy += p.g * dt
                 p.vx *= 0.985f
                 p.x += p.vx * dt
                 p.y += p.vy * dt
@@ -101,6 +103,23 @@ class Fx {
         if (particles.size > 600) particles.subList(0, particles.size - 600).clear()
     }
 
+    /** A small glowing ember that floats up (combo streak fire). */
+    fun ember(x: Float, y: Float, cellPx: Float) {
+        val life = 0.5f + rng.nextFloat() * 0.6f
+        val color = EMBER_COLORS[rng.nextInt(EMBER_COLORS.size)]
+        particles.add(
+            Particle(
+                x = x, y = y,
+                vx = (rng.nextFloat() - 0.5f) * cellPx * 1.2f,
+                vy = -cellPx * (1.5f + rng.nextFloat() * 2.5f),
+                life = life, maxLife = life,
+                color = color,
+                size = cellPx * (0.05f + rng.nextFloat() * 0.07f),
+                g = -cellPx * 0.5f,
+            )
+        )
+    }
+
     fun flash(index: Int, color: Color) {
         flashes.add(FlashCell(index, color, now))
     }
@@ -120,5 +139,6 @@ class Fx {
     companion object {
         const val FLASH_NANOS = 380_000_000L
         const val POP_NANOS = 200_000_000L
+        val EMBER_COLORS = listOf(Color(0xFFFFD166), Color(0xFFFF9F1C), Color(0xFFFF5E3A), Color(0xFFFFF3B0))
     }
 }

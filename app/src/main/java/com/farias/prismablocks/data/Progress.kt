@@ -23,6 +23,8 @@ object Progress {
         private set
     var soundOn by mutableStateOf(true)
         private set
+    var musicOn by mutableStateOf(true)
+        private set
     var vibrationOn by mutableStateOf(true)
         private set
     var notificationsOn by mutableStateOf(true)
@@ -43,6 +45,20 @@ object Progress {
     var notifAsked by mutableStateOf(false)
         private set
 
+    // Statistics
+    var totalLines by mutableIntStateOf(0)
+        private set
+    var bestCombo by mutableIntStateOf(0)
+        private set
+    var totalScore by mutableStateOf(0L)
+        private set
+    var dailiesDone by mutableIntStateOf(0)
+        private set
+    var bestStreak by mutableIntStateOf(0)
+        private set
+    var lastReviewAsk by mutableStateOf(0L)
+        private set
+
     val isReady: Boolean get() = ::prefs.isInitialized
 
     fun init(context: Context) {
@@ -51,6 +67,7 @@ object Progress {
         coins = prefs.getInt("coins", 100) // a small welcome gift
         best = prefs.getInt("best", 0)
         soundOn = prefs.getBoolean("sound", true)
+        musicOn = prefs.getBoolean("music", true)
         vibrationOn = prefs.getBoolean("vibration", true)
         notificationsOn = prefs.getBoolean("notifications", true)
         themeId = prefs.getString("theme", "neon") ?: "neon"
@@ -60,6 +77,12 @@ object Progress {
         streak = prefs.getInt("streak", 0)
         lastDailyDay = prefs.getInt("last_daily_day", 0)
         notifAsked = prefs.getBoolean("notif_asked", false)
+        totalLines = prefs.getInt("total_lines", 0)
+        bestCombo = prefs.getInt("best_combo", 0)
+        totalScore = prefs.getLong("total_score", 0L)
+        dailiesDone = prefs.getInt("dailies_done", 0)
+        bestStreak = prefs.getInt("best_streak", 0)
+        lastReviewAsk = prefs.getLong("last_review_ask", 0L)
     }
 
     // ------------------------------------------------------------------ coins
@@ -92,6 +115,11 @@ object Progress {
         prefs.edit().putBoolean("sound", soundOn).apply()
     }
 
+    fun toggleMusic() {
+        musicOn = !musicOn
+        prefs.edit().putBoolean("music", musicOn).apply()
+    }
+
     fun toggleVibration() {
         vibrationOn = !vibrationOn
         prefs.edit().putBoolean("vibration", vibrationOn).apply()
@@ -112,9 +140,28 @@ object Progress {
         prefs.edit().putBoolean("tutorial_done", done).apply()
     }
 
-    fun onGameFinished() {
+    fun onGameFinished(score: Int) {
         gamesPlayed += 1
-        prefs.edit().putInt("games_played", gamesPlayed).apply()
+        totalScore += score
+        prefs.edit().putInt("games_played", gamesPlayed).putLong("total_score", totalScore).apply()
+    }
+
+    fun recordMove(lines: Int, combo: Int) {
+        if (lines <= 0) return
+        totalLines += lines
+        val e = prefs.edit().putInt("total_lines", totalLines)
+        if (combo > bestCombo) {
+            bestCombo = combo
+            e.putInt("best_combo", bestCombo)
+        }
+        e.apply()
+    }
+
+    val averageScore: Int get() = if (gamesPlayed == 0) 0 else (totalScore / gamesPlayed).toInt()
+
+    fun markReviewAsked(now: Long) {
+        lastReviewAsk = now
+        prefs.edit().putLong("last_review_ask", now).apply()
     }
 
     // ------------------------------------------------------------------ themes
@@ -149,7 +196,10 @@ object Progress {
         if (lastDailyDay == t) return streak
         streak = if (lastDailyDay == yesterday()) streak + 1 else 1
         lastDailyDay = t
-        prefs.edit().putInt("streak", streak).putInt("last_daily_day", t).apply()
+        dailiesDone += 1
+        bestStreak = maxOf(bestStreak, streak)
+        prefs.edit().putInt("streak", streak).putInt("last_daily_day", t)
+            .putInt("dailies_done", dailiesDone).putInt("best_streak", bestStreak).apply()
         return streak
     }
 

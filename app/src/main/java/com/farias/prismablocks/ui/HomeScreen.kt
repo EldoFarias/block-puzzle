@@ -73,6 +73,7 @@ fun HomeScreen(
     onPlay: (continueSaved: Boolean) -> Unit,
     onDaily: () -> Unit,
     onThemes: () -> Unit,
+    onStats: () -> Unit,
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
@@ -173,12 +174,15 @@ fun HomeScreen(
                 Spacer(Modifier.height(8.dp))
                 DailyCard(onDaily)
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     HomeTile(stringResource(R.string.themes), Modifier.weight(1f), onThemes) {
-                        PaletteIcon(Modifier.size(22.dp))
+                        PaletteIcon(Modifier.size(24.dp))
+                    }
+                    HomeTile(stringResource(R.string.tile_stats), Modifier.weight(1f), onStats) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(24.dp))
                     }
                     HomeTile(stringResource(R.string.how_to), Modifier.weight(1f), { showHowTo = true }) {
-                        Icon(Icons.Default.Info, contentDescription = null, tint = Palette.Cyan, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Default.Info, contentDescription = null, tint = Palette.Cyan, modifier = Modifier.size(24.dp))
                     }
                 }
             }
@@ -316,20 +320,20 @@ private fun DailyCard(onDaily: () -> Unit) {
 @Composable
 private fun HomeTile(label: String, modifier: Modifier, onClick: () -> Unit, icon: @Composable () -> Unit) {
     val shape = RoundedCornerShape(18.dp)
-    Row(
+    Column(
         modifier = modifier
-            .height(56.dp)
+            .height(72.dp)
             .clip(shape)
             .background(Palette.Glass)
             .border(1.dp, Palette.GlassBorder, shape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         icon()
-        Spacer(Modifier.width(10.dp))
-        Text(label, style = Styles.plain(16, Palette.TextPrimary, FontWeight.Bold))
+        Spacer(Modifier.height(6.dp))
+        Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), maxLines = 1)
     }
 }
 
@@ -372,6 +376,10 @@ private fun SettingsDialog(ads: AdsManager, onToggleReminder: () -> Unit, onClos
         GlassPanel {
             Text(stringResource(R.string.settings), style = Styles.gradient(30))
             Spacer(Modifier.height(4.dp))
+            ToggleRow(stringResource(R.string.music), Progress.musicOn) {
+                Progress.toggleMusic()
+                com.farias.prismablocks.audio.MusicPlayer.update()
+            }
             ToggleRow(stringResource(R.string.sound), Progress.soundOn) { Progress.toggleSound() }
             ToggleRow(stringResource(R.string.vibration), Progress.vibrationOn) { Progress.toggleVibration() }
             ToggleRow(stringResource(R.string.notifications), Progress.notificationsOn) { onToggleReminder() }

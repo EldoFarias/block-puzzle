@@ -67,4 +67,16 @@
     <string name="notif_text">Solo lleva unos minutos. ¿Puedes superarlo?</string>
     <string name="notif_text_streak">¡Mantén tu racha de %1$d días!</string>
     <string name="daily_short">Desafío</string>
+    <string name="music">Música</string>
+    <string name="stats">Estadísticas</string>
+    <string name="tile_stats">Récords</string>
+    <string name="stat_best">Récord</string>
+    <string name="stat_games">Partidas</string>
+    <string name="stat_avg">Puntuación media</string>
+    <string name="stat_lines">Líneas limpiadas</string>
+    <string name="stat_combo">Mejor combo</string>
+    <string name="stat_dailies">Desafíos ganados</string>
+    <string name="stat_best_streak">Mejor racha</string>
+    <string name="stat_coins">Monedas</string>
+    <string name="near_record">¡Solo te faltaron %1$d puntos para el récord!</string>
 </resources>
