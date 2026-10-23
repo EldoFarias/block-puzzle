@@ -1,5 +1,6 @@
 package com.farias.prismablocks
 
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -26,6 +27,7 @@ import com.farias.prismablocks.ui.HomeScreen
 import com.farias.prismablocks.ui.SplashScreen
 import com.farias.prismablocks.ui.StatsScreen
 import com.farias.prismablocks.ui.ThemesScreen
+import com.farias.prismablocks.ui.skipChestToday
 
 enum class Screen { SPLASH, HOME, GAME, THEMES, STATS, ADVENTURE }
 
@@ -49,8 +51,10 @@ class MainActivity : ComponentActivity() {
         val sound = SoundManager.get(this)
         MusicPlayer.init(this)
 
+        val initial = debugStartScreen()
+
         setContent {
-            var screen by remember { mutableStateOf(Screen.SPLASH) }
+            var screen by remember { mutableStateOf(initial) }
             Crossfade(targetState = screen, animationSpec = tween(350), label = "screen") { current ->
                 when (current) {
                     Screen.SPLASH -> SplashScreen(sound) { screen = Screen.HOME }
@@ -101,6 +105,33 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Debug builds only: lets the automated screenshot test open a screen directly, e.g.
+     * `adb shell am start -n <pkg>/com.farias.prismablocks.MainActivity --es screen game`.
+     */
+    private fun debugStartScreen(): Screen {
+        if (!BuildConfig.DEBUG) return Screen.SPLASH
+        val target = intent.getStringExtra("screen") ?: return Screen.SPLASH
+        if (intent.getBooleanExtra("landscape", false)) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
+        if (target != "chest") skipChestToday()
+        return when (target) {
+            "game" -> {
+                vm.startClassic(continueSaved = false)
+                Screen.GAME
+            }
+            "adventure_game" -> {
+                vm.startAdventure(5)
+                Screen.GAME
+            }
+            "map" -> Screen.ADVENTURE
+            "themes" -> Screen.THEMES
+            "stats" -> Screen.STATS
+            else -> Screen.HOME
         }
     }
 

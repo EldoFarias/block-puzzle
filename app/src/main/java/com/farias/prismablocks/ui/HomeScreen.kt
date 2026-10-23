@@ -259,6 +259,11 @@ fun HomeScreen(
 /** Day the chest was last opened automatically, so it pops up only once per day. */
 private var chestAutoShownDay = 0
 
+/** Prevents the automatic chest popup today (used by debug screenshots). */
+fun skipChestToday() {
+    chestAutoShownDay = Progress.today()
+}
+
 /** Sizes for the menu: compact on short phones, larger on tablets. */
 private class HomeSizes(
     val logo: Dp,
