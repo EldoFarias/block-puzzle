@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.farias.prismablocks.R
 import com.farias.prismablocks.data.Progress
+import com.farias.prismablocks.game.GameEngine
 
 /** A visual theme: background, aurora lights and the 7 block colors. */
 class GameTheme(
@@ -100,9 +101,13 @@ object Palette {
     val Cyan = Color(0xFF22D3EE)
     val Magenta = Color(0xFFE879F9)
     val Danger = Color(0xFFF43F5E)
+    val Stone = Color(0xFF8E93A6)
 
     /** Block color for board value 1..7 in the current theme. */
     fun block(index: Int): Color = blockIn(theme, index)
+
+    /** Color of any board value: the block colors, gray for stones and locks. */
+    fun cell(value: Int): Color = if (value > GameEngine.COLORS) Stone else block(value)
 
     fun blockIn(t: GameTheme, index: Int): Color = t.blocks[(index - 1).coerceIn(0, t.blocks.size - 1)]
 

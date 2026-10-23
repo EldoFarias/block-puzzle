@@ -66,6 +66,84 @@ fun main() {
     val d3 = GameEngine(); d3.newGame(seed = 20261024L, prefill = 22)
     check(d3.serialize() != d1.serialize(), "different days differ")
 
+    // ---- adventure obstacles (boards built with the v4 save format)
+    val zeros = "0".repeat(64)
+    val noTimers = List(64) { 0 }
+    fun v4(board: String, tray: String, ice: String = zeros, timers: List<Int> = noTimers, gems: String = zeros) =
+        "v4;0;0;0;0;$board;$tray;0;$gems;0;${gems.count { it == '1' }};$ice;${timers.joinToString(",")};0;${ice.count { it == '1' }};0;0"
+    val one = "$single:3,-,-"
+    val two = "$single:3,$single:4,-"
+
+    // Stone: the first clear cracks it, the second removes it
+    val st = GameEngine(Random(6))
+    check(st.restore(v4("8" + "1".repeat(6) + "0" + "0".repeat(56), one)), "restore stone")
+    val st1 = st.place(0, 0, 7)!!
+    check(st1.clearedRows == listOf(0) && st1.cracked == listOf(Cell(0, 0)), "stone cracked")
+    check(st.board[0] == GameEngine.CRACKED && st.board.drop(1).all { it == 0 }, "only the stone stays")
+    check(st.restore(v4("9" + "1".repeat(6) + "0" + "0".repeat(56), one)), "restore cracked")
+    st.place(0, 0, 7)
+    check(st.board.all { it == 0 }, "cracked stone removed")
+
+    // Lock: its row can't be completed; a clear next to it opens it
+    val lk = GameEngine(Random(7))
+    check(lk.restore(v4("a" + "1".repeat(6) + "0" + "0".repeat(56), one)), "restore lock row")
+    check(lk.place(0, 0, 7)!!.lines == 0, "a locked cell doesn't complete its row")
+    check(lk.restore(v4("a" + "0".repeat(7) + "1".repeat(7) + "0" + "0".repeat(48), one)), "restore lock")
+    check(!lk.canPlace(Shapes.all[single], 0, 0), "nothing fits on a lock")
+    val lk1 = lk.place(0, 1, 7)!!
+    check(lk1.unlocked == listOf(Cell(0, 0)) && lk.board[0] == 0, "unlocked by the clear below")
+
+    // Ice melts when a cleared line goes through it
+    val ic = GameEngine(Random(8))
+    val iceStr = zeros.toCharArray().also { it[3] = '1'; it[45] = '1' }.concatToString()
+    check(ic.restore(v4("1".repeat(7) + "0" + "0".repeat(56), one, ice = iceStr)), "restore ice")
+    val ic1 = ic.place(0, 0, 7)!!
+    check(ic1.iceMelted == listOf(Cell(0, 3)) && ic.iceMelted == 1 && !ic.ice[3] && ic.ice[45], "ice melted")
+
+    // Time bomb: defused by clearing it, goes off when its counter reaches zero
+    val tb = GameEngine(Random(9))
+    check(tb.restore(v4("1".repeat(7) + "0" + "0".repeat(56), one, timers = noTimers.toMutableList().also { it[0] = 3 })), "restore timer")
+    val tb1 = tb.place(0, 0, 7)!!
+    check(tb1.defused == listOf(Cell(0, 0)) && tb.timers[0] == 0 && !tb.exploded, "defused")
+    // Rows 5 and 6 are the fullest, so the revive clears them (and row 0) and keeps the bomb on row 3.
+    val bombBoard = "0".repeat(24) + "00010000" + "0".repeat(8) + "11110000" + "11110000" + "00000001"
+    check(tb.restore(v4(bombBoard, two, timers = noTimers.toMutableList().also { it[63] = 2; it[27] = 9 })), "restore ticking")
+    check(tb.place(0, 0, 0)!!.exploded == null && tb.timers[63] == 1, "tick")
+    val tb2 = tb.place(1, 0, 2)!!
+    check(tb2.exploded == Cell(7, 7) && tb.exploded && tb.gameOver && tb2.gameOver, "exploded")
+    check(tb.revive() != null && !tb.exploded && !tb.gameOver && tb.timers[27] == 12, "revive gives the bombs more time")
+
+    // v4 round trip keeps every layer; undo restores them too
+    val full = GameEngine(Random(10))
+    full.newGame(seed = 99L, setup = BoardSetup(prefill = 14, gems = 3, stones = 2, locks = 2, ice = 5, timers = 2, timerMoves = 9))
+    val fs = full.serialize()
+    val full2 = GameEngine(Random(11))
+    check(full2.restore(fs) && full2.serialize() == fs, "v4 roundtrip")
+    check(full.iceTotal == 5 && full.gemsTotal == 3 && full.timers.count { it == 9 } == 2, "setup layers")
+    check(full.board.count { it == GameEngine.STONE } == 2 && full.board.count { it == GameEngine.LOCK } == 2, "setup obstacles")
+    val fslot = full.tray.indexOfFirst { it != null }
+    loop2@ for (r in 0 until 8) for (c in 0 until 8) if (full.place(fslot, r, c) != null) break@loop2
+    check(full.undo() && full.serialize() == fs, "undo restores obstacles and timers")
+
+    // Every adventure level builds a playable board that matches its goals
+    for (n in 1..300) {
+        val lv = Adventure.level(n)
+        val g = GameEngine()
+        g.newGame(seed = lv.seed, setup = lv.setup)
+        check(!g.gameOver && !lv.won(g), "level $n playable")
+        for (o in lv.objectives) when (o.goal) {
+            Goal.GEMS, Goal.PATTERN, Goal.CLEAR -> check(g.gemsTotal == o.target, "level $n ${o.goal} ${g.gemsTotal} vs ${o.target}")
+            Goal.ICE -> check(g.iceTotal == o.target, "level $n ice ${g.iceTotal} vs ${o.target}")
+            else -> Unit
+        }
+        val locks = (0 until 64).filter { g.board[it] == GameEngine.LOCK }
+        check(locks.size == lv.setup.locks, "level $n locks ${locks.size} vs ${lv.setup.locks}")
+        for (a in locks) for (b in locks) if (a < b) check(kotlin.math.abs(a / 8 - b / 8) >= 2 && kotlin.math.abs(a % 8 - b % 8) >= 2, "level $n locks apart")
+        check(g.board.count { it == GameEngine.STONE } == lv.setup.stones, "level $n stones")
+        check(g.timers.count { it > 0 } == lv.setup.timers, "level $n timers")
+        check(lv.boss == (n % 10 == 0) && lv.objectives.size == (if (lv.boss) 2 else 1), "level $n boss")
+    }
+
     // Simulate many random games: no crashes, game ends, scores sane
     val rng = Random(42)
     var totalMoves = 0; var maxScore = 0

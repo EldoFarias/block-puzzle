@@ -64,7 +64,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -117,7 +120,7 @@ fun GameScreen(vm: GameViewModel, ads: AdsManager, onGreatMoment: () -> Unit, on
     }
 
     Box(Modifier.fillMaxSize()) {
-        AuroraBackground()
+        AuroraBackground(theme = vm.level?.let { worldTheme(it.world) } ?: Palette.theme)
 
         BoxWithConstraints(Modifier.fillMaxSize().systemBarsPadding()) {
             val context = LocalContext.current
@@ -272,10 +275,21 @@ private fun TopBar(vm: GameViewModel, dims: GameDims) {
                 Text(Progress.best.toString(), style = Styles.glow(20, Palette.Gold))
             }
             Mode.DAILY -> Text(stringResource(R.string.daily_title), style = Styles.glow(18, Palette.Cyan, FontWeight.Black))
-            Mode.ADVENTURE -> Text(
-                stringResource(R.string.level_x, vm.level?.number ?: 1),
-                style = Styles.glow(20, Palette.Magenta, FontWeight.Black),
-            )
+            Mode.ADVENTURE -> {
+                val boss = vm.level?.boss == true
+                if (boss) {
+                    CrownIcon(Modifier.size(22.dp))
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(
+                    stringResource(R.string.level_x, vm.level?.number ?: 1),
+                    style = Styles.glow(20, if (boss) Palette.Gold else Palette.Magenta, FontWeight.Black),
+                )
+                vm.movesLeft?.let { left ->
+                    Spacer(Modifier.width(10.dp))
+                    MovesPill(left.coerceAtLeast(0))
+                }
+            }
         }
         Spacer(Modifier.weight(1f))
         CoinPill(Progress.coins)
@@ -302,12 +316,19 @@ private fun ScoreHeader(vm: GameViewModel, dims: GameDims) {
             if (vm.mode == Mode.DAILY) {
                 GoalProgress(vm.lines, vm.dailyTarget, stringResource(R.string.lines_progress, vm.lines.coerceAtMost(vm.dailyTarget), vm.dailyTarget))
             } else if (vm.mode == Mode.ADVENTURE && lv != null) {
-                val label = when (lv.goal) {
-                    Goal.GEMS -> stringResource(R.string.gems_progress, vm.gemsCollected.coerceAtMost(lv.target), lv.target)
-                    Goal.LINES -> stringResource(R.string.lines_progress, vm.lines.coerceAtMost(lv.target), lv.target)
-                    Goal.SCORE -> stringResource(R.string.points_progress, lv.target)
+                if (lv.objectives.size == 1) {
+                    val o = lv.objectives[0]
+                    val current = vm.progress(o.goal)
+                    GoalProgress(current, o.target, progressText(o, current), goal = o.goal)
+                } else {
+                    // Boss: both goals side by side, each with a slim bar.
+                    Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        for (o in lv.objectives) {
+                            val current = vm.progress(o.goal)
+                            CompactGoalProgress(current, o.target, progressText(o, current), o.goal)
+                        }
+                    }
                 }
-                GoalProgress(vm.advProgress, lv.target, label, gem = lv.goal == Goal.GEMS)
             } else if (vm.combo >= 2) {
                 ComboBadge(vm.combo)
             }
@@ -332,31 +353,64 @@ private fun ComboBadge(combo: Int) {
 }
 
 @Composable
-private fun GoalProgress(current: Int, target: Int, label: String, gem: Boolean = false) {
-    val progress = (current.toFloat() / target.coerceAtLeast(1)).coerceIn(0f, 1f)
+private fun GoalProgress(current: Int, target: Int, label: String, goal: Goal? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (gem) {
-            Canvas(Modifier.size(22.dp)) { drawGemIcon(center, size.width) }
+        if (goal != null && goal != Goal.LINES && goal != Goal.SCORE) {
+            GoalIcon(goal, Modifier.size(22.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Box(
-            Modifier
-                .width(150.dp)
-                .height(10.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color(0x33FFFFFF)),
-        ) {
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(progress)
-                    .clip(RoundedCornerShape(50))
-                    .background(Brush.horizontalGradient(listOf(Palette.Cyan, Palette.Magenta))),
-            )
-        }
+        ProgressBar(current, target, Modifier.width(150.dp).height(10.dp))
         Spacer(Modifier.width(10.dp))
         Text(label, style = Styles.plain(14, Palette.TextPrimary, FontWeight.Bold))
     }
+}
+
+/** Icon, label and a slim bar under it, for the two goals of a boss level. */
+@Composable
+private fun CompactGoalProgress(current: Int, target: Int, label: String, goal: Goal) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        GoalIcon(goal, Modifier.size(20.dp))
+        Spacer(Modifier.width(6.dp))
+        Column {
+            Text(label, style = Styles.plain(13, Palette.TextPrimary, FontWeight.Bold), maxLines = 1)
+            ProgressBar(current, target, Modifier.width(88.dp).height(5.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProgressBar(current: Int, target: Int, modifier: Modifier) {
+    val progress = (current.toFloat() / target.coerceAtLeast(1)).coerceIn(0f, 1f)
+    Box(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0x33FFFFFF)),
+    ) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(progress)
+                .clip(RoundedCornerShape(50))
+                .background(Brush.horizontalGradient(listOf(Palette.Cyan, Palette.Magenta))),
+        )
+    }
+}
+
+/** Moves left in a level with a move limit; turns red near the end. */
+@Composable
+private fun MovesPill(left: Int) {
+    val low = left <= 3
+    val shape = RoundedCornerShape(50)
+    Text(
+        stringResource(R.string.moves_left, left),
+        style = Styles.plain(13, if (low) Color.White else Palette.TextPrimary, FontWeight.Black),
+        maxLines = 1,
+        modifier = Modifier
+            .clip(shape)
+            .background(if (low) Palette.Danger.copy(alpha = 0.55f) else Palette.Glass)
+            .border(1.dp, if (low) Palette.Danger else Palette.GlassBorder, shape)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    )
 }
 
 // --------------------------------------------------------------------------- board
@@ -364,6 +418,7 @@ private fun GoalProgress(current: Int, target: Int, label: String, gem: Boolean 
 @Composable
 private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
     val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
     val padDp = side * 0.03f
     val pulse = rememberInfiniteTransition(label = "bomb")
     val bombPulse by pulse.animateFloat(
@@ -426,6 +481,9 @@ private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
 
         val board = vm.board
         val gems = vm.gems
+        val ice = vm.ice
+        val timers = vm.timers
+        val targetBlocks = vm.targetBlocks
         val drag = vm.drag?.takeIf { it.valid }
         val previewColor = drag?.let { Palette.block(it.piece.color) }
         val previewRows = drag?.previewRows ?: emptyList()
@@ -437,20 +495,44 @@ private fun Board(vm: GameViewModel, side: Dp, onBombTap: (Int, Int) -> Unit) {
             val tl = Offset(p + c * cell, p + r * cell)
             val idx = r * n + c
             val v = board[idx]
-            if (v == 0) {
+            val inPreview = previewColor != null && (r in previewRows || c in previewCols)
+            if (v == 0 || v == GameEngine.LOCK) {
                 drawEmptyCell(tl, cell)
+                if (v == GameEngine.LOCK) drawLock(tl, cell, alpha = 1f - overT * 0.5f)
+                if (ice[idx]) drawIce(tl, cell)
+                continue
+            }
+            if (v == GameEngine.STONE || v == GameEngine.CRACKED) {
+                var tint = if (inPreview) lerp(Palette.Stone, previewColor!!, 0.45f) else Palette.Stone
+                if (overT > 0f) tint = lerp(tint, Palette.gray(tint), overT)
+                drawStone(tl, cell, cracked = v == GameEngine.CRACKED, tint = tint)
+                if (ice[idx]) drawIce(tl, cell)
                 continue
             }
             var color = Palette.block(v)
-            if (previewColor != null && (r in previewRows || c in previewCols)) color = previewColor
+            if (inPreview) color = previewColor!!
             if (overT > 0f) color = lerp(color, Palette.gray(color), overT)
             val popStart = vm.fx.pops[idx]
             val pt = if (popStart == 0L) 1f else ((now - popStart) / Fx.POP_NANOS.toFloat()).coerceIn(0f, 1f)
             val scale = if (pt < 1f) 0.6f + 0.4f * easeOutBack(pt) else 1f
             drawGem(tl, cell, color, glow = overT < 0.5f, scale = scale)
+            val center = Offset(tl.x + cell / 2f, tl.y + cell / 2f)
             if (gems[idx]) {
                 val tw = 0.75f + 0.25f * kotlin.math.sin(now / 180_000_000.0 + idx).toFloat()
-                drawGemIcon(Offset(tl.x + cell / 2f, tl.y + cell / 2f), cell * scale, tw, alpha = 1f - overT * 0.5f)
+                if (targetBlocks) drawTargetMark(center, cell * scale, tw, alpha = 1f - overT * 0.5f)
+                else drawGemIcon(center, cell * scale, tw, alpha = 1f - overT * 0.5f)
+            }
+            if (ice[idx]) drawIce(tl, cell)
+            val t = timers[idx]
+            if (t > 0) {
+                val urgent = t <= 3
+                val pulse = if (urgent) 0.5f + 0.5f * kotlin.math.sin(now / 90_000_000.0).toFloat() else 1f
+                drawTimerBadge(center, cell * scale, urgent, pulse)
+                val label = measurer.measure(
+                    t.toString(),
+                    TextStyle(color = Color.White, fontSize = (cell * 0.3f).toSp(), fontWeight = FontWeight.Black),
+                )
+                drawText(label, topLeft = Offset(center.x - label.size.width / 2f, center.y - label.size.height / 2f))
             }
         }
 

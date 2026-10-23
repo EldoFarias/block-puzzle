@@ -95,6 +95,7 @@ class MainActivity : ComponentActivity() {
                     Screen.THEMES -> ThemesScreen(sound) { screen = Screen.HOME }
                     Screen.STATS -> StatsScreen { screen = Screen.HOME }
                     Screen.ADVENTURE -> AdventureScreen(
+                        sound = sound,
                         onBack = { screen = Screen.HOME },
                         onPlay = { number ->
                             ads.onNewGame {
@@ -110,7 +111,8 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Debug builds only: lets the automated screenshot test open a screen directly, e.g.
-     * `adb shell am start -n <pkg>/com.farias.prismablocks.MainActivity --es screen game`.
+     * `adb shell am start -n <pkg>/com.farias.prismablocks.MainActivity --es screen game`
+     * (`--ei level 41` picks the adventure level of `adventure_game`).
      */
     private fun debugStartScreen(): Screen {
         if (!BuildConfig.DEBUG) return Screen.SPLASH
@@ -125,7 +127,7 @@ class MainActivity : ComponentActivity() {
                 Screen.GAME
             }
             "adventure_game" -> {
-                vm.startAdventure(5)
+                vm.startAdventure(intent.getIntExtra("level", 5))
                 Screen.GAME
             }
             "map" -> Screen.ADVENTURE

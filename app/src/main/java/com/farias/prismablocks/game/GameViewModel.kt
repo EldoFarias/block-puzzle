@@ -28,6 +28,9 @@ enum class Mode { CLASSIC, DAILY, ADVENTURE }
 
 enum class Power(val cost: Int) { UNDO(30), BOMB(50), SHUFFLE(40) }
 
+/** Why the game ended without reaching the goal. */
+enum class Loss { NO_SPACE, NO_MOVES, EXPLODED }
+
 /** Piece currently held by the player. [pointer] is in root coordinates. */
 data class DragState(
     val slot: Int,
@@ -65,7 +68,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var lines by mutableIntStateOf(0)
         private set
+    /** No more moves: no room for the pieces, out of moves or a time bomb went off. */
     var gameOver by mutableStateOf(false)
+        private set
+    var loss by mutableStateOf(Loss.NO_SPACE)
         private set
     /** Game over panel appears a moment after the last move, for drama. */
     var showGameOverPanel by mutableStateOf(false)
@@ -105,6 +111,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var gemsCollected by mutableIntStateOf(0)
         private set
+    var ice by mutableStateOf(BooleanArray(GameEngine.N * GameEngine.N))
+        private set
+    var iceMelted by mutableIntStateOf(0)
+        private set
+    var timers by mutableStateOf(IntArray(GameEngine.N * GameEngine.N))
+        private set
+    var maxCombo by mutableIntStateOf(0)
+        private set
+    /** Extra moves bought with a video after running out. */
+    private var bonusMoves = 0
+    private var movesRevived = false
+    private var outOfMoves = false
     var advWon by mutableStateOf(false)
         private set
     var showAdvWin by mutableStateOf(false)
@@ -112,14 +130,22 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     var advStars by mutableIntStateOf(0)
         private set
 
-    /** Progress towards the adventure goal (gems, lines or points). */
-    val advProgress: Int
-        get() = when (level?.goal) {
-            Goal.GEMS -> gemsCollected
-            Goal.LINES -> lines
-            Goal.SCORE -> score
-            null -> 0
-        }
+    /** Progress towards an adventure goal. */
+    fun progress(goal: Goal): Int = when (goal) {
+        Goal.GEMS, Goal.PATTERN, Goal.CLEAR -> gemsCollected
+        Goal.LINES -> lines
+        Goal.SCORE -> score
+        Goal.ICE -> iceMelted
+        Goal.COMBO -> maxCombo
+    }
+
+    /** Pieces the player may still place in a level with a move limit, or null if there is none. */
+    val movesLeft: Int?
+        get() = level?.takeIf { mode == Mode.ADVENTURE && it.maxMoves > 0 }?.let { it.maxMoves + bonusMoves - advMoves }
+
+    /** The adventure targets on the board are blocks of a drawing (or all starting blocks), not gems. */
+    val targetBlocks: Boolean
+        get() = mode == Mode.ADVENTURE && level?.objectives?.any { it.goal == Goal.PATTERN || it.goal == Goal.CLEAR } == true
 
     /** No more moves for this game (lost, or the goal was reached). */
     val finished: Boolean get() = gameOver || dailyWon || advWon
@@ -172,7 +198,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val lv = level ?: return
         advMoves = 0
         engine.helpChance = lv.helpChance
-        engine.newGame(seed = lv.seed, prefill = lv.prefill, gemCount = lv.gems, gemEase = lv.gemEase)
+        engine.newGame(seed = lv.seed, setup = lv.setup)
     }
 
     /** "Play again" / "Try again": a fresh game in the current mode. */
@@ -205,6 +231,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         showAdvWin = false
         advWon = false
         advMoves = 0
+        bonusMoves = 0
+        movesRevived = false
+        outOfMoves = false
+        loss = Loss.NO_SPACE
         if (newMode != Mode.ADVENTURE) level = null
         engine.helpChance = 0.65f
         newRecord = false
@@ -286,12 +316,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         missionEvent(MissionType.SCORE, engine.score, asMax = true)
         if (mode == Mode.ADVENTURE) advMoves++
         onGems(r.gems)
+        onObstacles(r)
 
         for (cell in r.placed) fx.pop(cell.r * GameEngine.N + cell.c)
 
         if (r.lines > 0) {
             for ((cell, c) in r.clearedCells) {
-                val col = Palette.block(c)
+                val col = Palette.cell(c)
                 fx.flash(cell.r * GameEngine.N + cell.c, col)
                 fx.burst(cellCenter(cell.r, cell.c), col, cellPx, if (r.lines >= 3) 9 else 6)
             }
@@ -335,12 +366,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         sync()
         if (checkAdventureWin()) return
-        if (r.gameOver) onGameOver()
+        if (r.gameOver) {
+            onGameOver(if (r.exploded != null) Loss.EXPLODED else Loss.NO_SPACE)
+        } else if (movesLeft?.let { it <= 0 } == true) {
+            outOfMoves = true
+            sync()
+            onGameOver(Loss.NO_MOVES)
+        }
     }
 
-    private fun onGameOver() {
+    private fun onGameOver(reason: Loss) {
+        loss = reason
         gameOverAt = fx.now
-        sound.play(Sfx.GAME_OVER, 0.9f)
+        if (reason != Loss.EXPLODED) sound.play(Sfx.GAME_OVER, 0.9f)
         vibrate(Haptic.HEAVY)
         when (mode) {
             Mode.DAILY -> Progress.remove(KEY_DAILY)
@@ -396,32 +434,58 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         sound.play(Sfx.COIN, 0.8f, 0.9f)
     }
 
-    /** Sparkles for collected gems. */
+    /** Sparkles for collected gems (or drawing blocks). */
     private fun onGems(collected: List<Cell>) {
         if (collected.isEmpty()) return
-        missionEvent(MissionType.GEMS, collected.size)
+        if (!targetBlocks) missionEvent(MissionType.GEMS, collected.size)
+        val color = if (targetBlocks) Palette.Gold else GEM_COLOR
         for (cell in collected) {
             val c = cellCenter(cell.r, cell.c)
-            fx.burst(c, GEM_COLOR, cellPx, 12)
+            fx.burst(c, color, cellPx, 12)
             fx.burst(c, androidx.compose.ui.graphics.Color.White, cellPx * 0.7f, 6)
         }
         sound.play(Sfx.COIN, 0.9f, 1.25f)
     }
 
+    /** Effects for ice, stones, locks and time bombs. */
+    private fun onObstacles(r: MoveResult) {
+        for (cell in r.iceMelted) {
+            val c = cellCenter(cell.r, cell.c)
+            fx.burst(c, ICE_COLOR, cellPx, 10)
+            fx.burst(c, androidx.compose.ui.graphics.Color.White, cellPx * 0.6f, 5)
+        }
+        for (cell in r.cracked) fx.burst(cellCenter(cell.r, cell.c), Palette.Stone, cellPx * 0.8f, 8)
+        for (cell in r.unlocked) fx.burst(cellCenter(cell.r, cell.c), Palette.Gold, cellPx * 0.7f, 8)
+        if (r.iceMelted.isNotEmpty()) sound.play(Sfx.COIN, 0.6f, 1.5f)
+        if (r.defused.isNotEmpty()) {
+            val ctx = getApplication<Application>()
+            for (cell in r.defused) fx.burst(cellCenter(cell.r, cell.c), Palette.Gold, cellPx, 14)
+            val first = r.defused[0]
+            fx.text(ctx.getString(R.string.defused), cellCenter(first.r, first.c), Palette.Gold, big = false, delayMs = 150)
+        }
+        r.exploded?.let { cell ->
+            val c = cellCenter(cell.r, cell.c)
+            fx.burst(c, Palette.Danger, cellPx * 1.6f, 30)
+            fx.burst(c, androidx.compose.ui.graphics.Color(0xFFFF9100), cellPx * 1.2f, 20)
+            fx.shake(cellPx * 0.45f)
+            sound.play(Sfx.BOMB)
+        }
+    }
+
     /** Ends an adventure level if its goal was reached. */
     private fun checkAdventureWin(): Boolean {
         val lv = level ?: return false
-        if (mode != Mode.ADVENTURE || advWon || advProgress < lv.target) return false
+        if (mode != Mode.ADVENTURE || advWon || lv.objectives.any { progress(it.goal) < it.target }) return false
         advWon = true
         bombMode = false
         advStars = lv.stars(advMoves)
         val first = Progress.completeLevel(lv.number, advStars)
         missionEvent(MissionType.LEVELS, 1)
-        coinsEarned = Adventure.reward(advStars, first)
+        coinsEarned = Adventure.reward(advStars, first, lv.boss)
         Progress.addCoins(coinsEarned)
         countFinish()
         val ctx = getApplication<Application>()
-        fx.text(ctx.getString(R.string.level_complete), Offset(gridOrigin.x + cellPx * 4f, gridOrigin.y + cellPx * 3f), Palette.Gold, big = true, delayMs = 150)
+        fx.text(ctx.getString(if (lv.boss) R.string.boss_defeated else R.string.level_complete), Offset(gridOrigin.x + cellPx * 4f, gridOrigin.y + cellPx * 3f), Palette.Gold, big = true, delayMs = 150)
         fx.shake(cellPx * 0.2f)
         sound.play(Sfx.RECORD)
         vibrate(Haptic.HEAVY)
@@ -445,26 +509,38 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val canRevive: Boolean get() = gameOver && !revived
 
     fun revive() {
+        if (outOfMoves && !engine.gameOver) {
+            // Ran out of moves: the video buys 5 more.
+            outOfMoves = false
+            movesRevived = true
+            bonusMoves += 5
+            showGameOverPanel = false
+            sound.play(Sfx.REVIVE)
+            vibrate(Haptic.CLEAR)
+            sync()
+            return
+        }
         val r = engine.revive() ?: return
         showGameOverPanel = false
         for ((cell, c) in r.clearedCells) {
-            val col = Palette.block(c)
+            val col = Palette.cell(c)
             fx.flash(cell.r * GameEngine.N + cell.c, col)
             fx.burst(cellCenter(cell.r, cell.c), col, cellPx, 5)
         }
         sound.play(Sfx.REVIVE)
         vibrate(Haptic.CLEAR)
         onGems(r.gems)
+        onObstacles(r)
         sync()
         if (checkAdventureWin()) return
-        if (r.gameOver) onGameOver()
+        if (r.gameOver) onGameOver(Loss.NO_SPACE)
     }
 
     fun powerAvailable(p: Power): Boolean {
         if (finished || paused) return false
         return when (p) {
             Power.UNDO -> canUndo
-            Power.BOMB -> board.any { it != 0 }
+            Power.BOMB -> board.any { it != 0 } || ice.any { it }
             Power.SHUFFLE -> true
         }
     }
@@ -483,7 +559,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         sound.play(Sfx.WHOOSH, 0.8f, 1.15f)
         vibrate(Haptic.PLACE)
         sync()
-        if (engine.gameOver) onGameOver()
+        if (engine.gameOver) onGameOver(Loss.NO_SPACE)
     }
 
     /** Board cell under a tap in root coordinates, or null if outside the grid. */
@@ -495,10 +571,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         return r to c
     }
 
-    /** True if a bomb at (r, c) would destroy at least one block. */
+    /** True if a bomb at (r, c) would destroy at least one block or melt some ice. */
     fun bombHits(r: Int, c: Int): Boolean {
         for (rr in r - 1..r + 1) for (cc in c - 1..c + 1) {
-            if (rr in 0 until GameEngine.N && cc in 0 until GameEngine.N && board[rr * GameEngine.N + cc] != 0) return true
+            if (rr !in 0 until GameEngine.N || cc !in 0 until GameEngine.N) continue
+            val i = rr * GameEngine.N + cc
+            if (board[i] != 0 || ice[i]) return true
         }
         return false
     }
@@ -507,7 +585,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val res = engine.bomb(r, c) ?: return
         bombMode = false
         for ((cell, col) in res.clearedCells) {
-            val color = Palette.block(col)
+            val color = Palette.cell(col)
             fx.flash(cell.r * GameEngine.N + cell.c, color)
             fx.burst(cellCenter(cell.r, cell.c), color, cellPx, 10)
         }
@@ -515,9 +593,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         sound.play(Sfx.BOMB)
         vibrate(Haptic.HEAVY)
         onGems(res.gems)
+        onObstacles(res)
         sync()
         if (checkAdventureWin()) return
-        if (res.gameOver) onGameOver()
+        if (res.gameOver) onGameOver(Loss.NO_SPACE)
     }
 
     /** Called every frame: while a combo streak is alive, embers rise from the board edges. */
@@ -550,7 +629,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (paused) return false
         if (combo >= 2 && !finished && !bombMode) return true
         if (gameOver && fx.now - gameOverAt < 700_000_000L) return true
-        return gems.any { it }
+        // Twinkling gems and time bombs about to go off.
+        return gems.any { it } || timers.any { it in 1..3 }
     }
 
     fun playInvalid() {
@@ -575,11 +655,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         score = engine.score
         combo = engine.combo
         lines = engine.linesCleared
-        gameOver = engine.gameOver
-        revived = engine.revived
+        gameOver = engine.gameOver || outOfMoves
+        revived = engine.revived || movesRevived
         canUndo = engine.canUndo
         gems = engine.gems.copyOf()
         gemsCollected = engine.gemsCollected
+        ice = engine.ice.copyOf()
+        iceMelted = engine.iceMelted
+        timers = engine.timers.copyOf()
+        maxCombo = engine.maxCombo
         if (mode == Mode.CLASSIC) Progress.submitScore(engine.score)
         save()
     }
@@ -606,6 +690,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         const val COIN_DIVISOR = 40
         const val DAILY_REWARD = 60
         val GEM_COLOR = androidx.compose.ui.graphics.Color(0xFF67E8F9)
+        val ICE_COLOR = androidx.compose.ui.graphics.Color(0xFFBAE6FD)
 
         /** Lines to clear in the daily challenge of [day] (yyyyMMdd): 10 to 14. */
         fun dailyTargetFor(day: Int): Int = 10 + day % 5

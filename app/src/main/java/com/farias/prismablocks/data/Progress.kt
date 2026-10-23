@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.farias.prismablocks.game.Adventure
 import java.util.Calendar
 
 /**
@@ -66,6 +67,12 @@ object Progress {
     /** Best stars per finished level. */
     var levelStars by mutableStateOf(mapOf<Int, Int>())
         private set
+    /** Trail chests already opened, by the level they follow. */
+    var trailChests by mutableStateOf(setOf<Int>())
+        private set
+    /** Star chests opened so far (one every [Adventure.STARS_PER_CHEST] stars). */
+    var starChests by mutableIntStateOf(0)
+        private set
 
     // Daily missions
     private var missionDay = 0
@@ -117,6 +124,8 @@ object Progress {
             val p = e.split(":")
             if (p.size == 2) p[0].toIntOrNull()?.let { k -> p[1].toIntOrNull()?.let { v -> k to v } } else null
         }.toMap()
+        trailChests = (prefs.getString("trail_chests", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }.toSet()
+        starChests = prefs.getInt("star_chests", 0)
     }
 
     // ------------------------------------------------------------------ coins
@@ -326,6 +335,33 @@ object Progress {
             .putString("level_stars", levelStars.entries.joinToString(",") { "${it.key}:${it.value}" })
             .apply()
         return firstTime
+    }
+
+    /** The chest after [level] can be opened: that level is beaten and the chest is still closed. */
+    fun trailChestReady(level: Int): Boolean =
+        Adventure.hasChestAfter(level) && adventureLevel > level && level !in trailChests
+
+    /** Opens the chest after [level]; returns the coins earned (0 if it wasn't ready). */
+    fun openTrailChest(level: Int): Int {
+        if (!trailChestReady(level)) return 0
+        trailChests = trailChests + level
+        prefs.edit().putString("trail_chests", trailChests.joinToString(",")).apply()
+        val reward = Adventure.trailChestReward(level)
+        addCoins(reward)
+        return reward
+    }
+
+    /** Stars needed for the next star chest. */
+    val nextStarChest: Int get() = (starChests + 1) * Adventure.STARS_PER_CHEST
+
+    fun starChestReady(): Boolean = totalStars >= nextStarChest
+
+    fun openStarChest(): Int {
+        if (!starChestReady()) return 0
+        starChests += 1
+        prefs.edit().putInt("star_chests", starChests).apply()
+        addCoins(Adventure.STAR_CHEST_REWARD)
+        return Adventure.STAR_CHEST_REWARD
     }
 
     // ------------------------------------------------------------------ daily challenge

@@ -31,7 +31,7 @@ import com.farias.prismablocks.R
 import com.farias.prismablocks.ads.AdsManager
 import com.farias.prismablocks.data.Progress
 import com.farias.prismablocks.game.GameViewModel
-import com.farias.prismablocks.game.Goal
+import com.farias.prismablocks.game.Loss
 import com.farias.prismablocks.game.Mode
 import com.farias.prismablocks.game.Power
 import com.google.android.gms.ads.AdRequest
@@ -127,17 +127,15 @@ fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
         GlassPanel {
             when {
                 adventure && lv != null -> {
-                    val left = (lv.target - vm.advProgress).coerceAtLeast(1)
                     Text(stringResource(R.string.level_x, lv.number), style = Styles.plain(16, Palette.TextSecondary, FontWeight.Bold))
+                    when (vm.loss) {
+                        Loss.NO_MOVES -> Text(stringResource(R.string.out_of_moves), style = Styles.glow(20, Color(0xFFFB923C), FontWeight.Black))
+                        Loss.EXPLODED -> Text(stringResource(R.string.bomb_exploded), style = Styles.glow(20, Palette.Danger, FontWeight.Black), textAlign = TextAlign.Center)
+                        Loss.NO_SPACE -> Unit
+                    }
+                    val missing = lv.objectives.firstOrNull { vm.progress(it.goal) < it.target } ?: lv.objectives[0]
                     Text(
-                        stringResource(
-                            when (lv.goal) {
-                                Goal.GEMS -> R.string.left_gems
-                                Goal.LINES -> R.string.daily_fail
-                                Goal.SCORE -> R.string.left_points
-                            },
-                            left,
-                        ),
+                        missingText(missing, vm.progress(missing.goal)),
                         style = Styles.plain(24, Palette.TextPrimary, FontWeight.Black),
                         textAlign = TextAlign.Center,
                     )
@@ -177,8 +175,9 @@ fun GameOverOverlay(vm: GameViewModel, ads: AdsManager, onHome: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             if (vm.canRevive && ads.adsReady) {
+                val label = if (vm.loss == Loss.NO_MOVES) R.string.continue_moves else R.string.continue_video
                 PrimaryButton(
-                    text = stringResource(if (ads.rewardedReady) R.string.continue_video else R.string.loading_video),
+                    text = stringResource(if (ads.rewardedReady) label else R.string.loading_video),
                     enabled = ads.rewardedReady,
                 ) {
                     ads.showRewarded { vm.revive() }
@@ -299,7 +298,7 @@ fun AdventureWinOverlay(vm: GameViewModel, ads: AdsManager, onMap: () -> Unit) {
         GlassPanel {
             Text(stringResource(R.string.level_x, lv.number), style = Styles.plain(16, Palette.TextSecondary, FontWeight.Bold))
             Text(
-                stringResource(R.string.level_complete),
+                stringResource(if (lv.boss) R.string.boss_defeated else R.string.level_complete),
                 style = Styles.glow(28, Palette.Gold, FontWeight.Black),
                 textAlign = TextAlign.Center,
             )
