@@ -20,6 +20,8 @@ fun DrawScope.drawGem(
 ) {
     if (alpha <= 0.01f || scale <= 0.01f) return
     val s = cell * scale
+    // Gradients crash with a zero radius/height (e.g. first frame or start of an animation).
+    if (s < 1f) return
     val o = Offset(topLeft.x + (cell - s) / 2f, topLeft.y + (cell - s) / 2f)
     val inset = s * 0.05f
     val d = s - inset * 2f
@@ -94,6 +96,7 @@ fun DrawScope.drawGem(
 
 /** Empty board slot: a soft, recessed glass square. */
 fun DrawScope.drawEmptyCell(topLeft: Offset, cell: Float) {
+    if (cell < 1f) return
     val inset = cell * 0.05f
     val d = cell - inset * 2f
     val corner = CornerRadius(d * 0.2f)

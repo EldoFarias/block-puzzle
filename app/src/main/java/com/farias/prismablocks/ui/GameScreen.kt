@@ -146,6 +146,7 @@ private fun AuroraBackground() {
 }
 
 private fun DrawScope.blob(color: Color, center: Offset, radius: Float, alpha: Float) {
+    if (radius < 1f) return
     drawCircle(
         brush = Brush.radialGradient(listOf(color.copy(alpha = alpha), Color.Transparent), center, radius),
         radius = radius,
