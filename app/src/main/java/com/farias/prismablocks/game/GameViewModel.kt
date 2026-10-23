@@ -233,7 +233,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun onMove(r: MoveResult) {
         val ctx = getApplication<Application>()
         val color = Palette.block(r.color)
-        if (!Progress.tutorialDone) Progress.setTutorialDone(true)
+        if (!Progress.tutorialDone) Progress.markTutorial(true)
 
         for (cell in r.placed) fx.pop(cell.r * GameEngine.N + cell.c)
 

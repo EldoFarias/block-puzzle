@@ -107,7 +107,7 @@ object Progress {
         prefs.edit().putBoolean("notif_asked", true).apply()
     }
 
-    fun setTutorialDone(done: Boolean) {
+    fun markTutorial(done: Boolean) {
         tutorialDone = done
         prefs.edit().putBoolean("tutorial_done", done).apply()
     }
