@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Prisma Blocks</string>
+    <string name="paused">Paused</string>
+    <string name="sound">Sound</string>
+    <string name="vibration">Vibration</string>
+    <string name="resume">Resume</string>
+    <string name="restart">Restart</string>
+    <string name="privacy_options">Privacy and ad options</string>
+    <string name="no_space">Out of space!</string>
+    <string name="new_record">NEW RECORD!</string>
+    <string name="score">SCORE</string>
+    <string name="best_x">Best: %1$d</string>
+    <string name="continue_video">▶  Continue (watch video)</string>
+    <string name="loading_video">Loading video…</string>
+    <string name="play_again">Play again</string>
+    <string name="combo_x">COMBO x%1$d</string>
+    <string name="praise_2">Great!</string>
+    <string name="praise_3">Amazing!</string>
+    <string name="praise_4">LEGENDARY!</string>
+    <string name="praise_board_clear">BOARD CLEAR!</string>
+</resources>

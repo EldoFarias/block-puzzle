@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paused">Pausado</string>
+    <string name="sound">Som</string>
+    <string name="vibration">Vibração</string>
+    <string name="resume">Continuar</string>
+    <string name="restart">Recomeçar</string>
+    <string name="privacy_options">Privacidade e anúncios</string>
+    <string name="no_space">Sem espaço!</string>
+    <string name="new_record">NOVO RECORDE!</string>
+    <string name="score">PONTUAÇÃO</string>
+    <string name="best_x">Recorde: %1$d</string>
+    <string name="continue_video">▶  Continuar (assistir vídeo)</string>
+    <string name="loading_video">Carregando vídeo…</string>
+    <string name="play_again">Jogar de novo</string>
+    <string name="combo_x">COMBO x%1$d</string>
+    <string name="praise_2">Ótimo!</string>
+    <string name="praise_3">Incrível!</string>
+    <string name="praise_4">LENDÁRIO!</string>
+    <string name="praise_board_clear">TABULEIRO LIMPO!</string>
+</resources>
