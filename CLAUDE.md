@@ -58,5 +58,8 @@ Telas se adaptam: compacto (altura < 660 dp), tablet (escala 1.3 nos controles) 
 2. **Enviado para produção (2026-10-23), em revisão do Google**: versão 18 (1.1.0), 177 países, página da loja em
    8 idiomas (textos de `store/listings/`, prints de `store/make_screenshots.py`; cópias em `Desktop/PrismaBlocks-PlayStore`).
    Conta pessoal ESF-FARIAS: no Chrome do Eldo o Play Console é `/u/1` (`/u/0` é outra conta, não mexer).
-   Depois de aprovado: vincular o app no AdMob e cadastrar o celular do Eldo como dispositivo de teste.
+   Depois de aprovado: cadastrar o celular do Eldo como dispositivo de teste no AdMob.
+   **AdMob**: o app certo é "Prisma Blocks: Jogo de Blocos" `~6426762726` (ligado à loja). Até a 1.1.0 o jogo usava
+   o app "Prisma Blocks" `~3617818902`, sem loja → veiculação limitada; a 1.1.1 (2026-10-27) troca para os blocos
+   novos (secrets `ADMOB_*`). O `app-ads.txt` é lido em `odle-x.com.br` (Firebase do projeto arrow-puzzle-odle).
 3. Fase 2: login com Google Play Games (salvamento na nuvem, ranking, conquistas).
